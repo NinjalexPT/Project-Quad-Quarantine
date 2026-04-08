@@ -1,7 +1,7 @@
 # 🧟 Quad Quarantine
 > **Survival Grade:** A high-stakes, campus-survival roguelite built with Swift and SpriteKit.
 
-![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)
+![Swift](https://img.shields.io/badge/Swift-6.3-orange.svg)
 ![SpriteKit](https://img.shields.io/badge/Framework-SpriteKit-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-iOS-lightgrey.svg)
 
