@@ -74,6 +74,6 @@
 
 ## 🛠 Installation & Running
 1. Clone this repository.
-2. Open `QuadQuarantine.xcodeproj` in **Xcode 15+**.
+2. Open `QuadQuarantine.xcodeproj` in **Xcode 26.4+**.
 3. Select an iOS Simulator or a connected iPhone.
 4. Press
