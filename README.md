@@ -46,8 +46,8 @@
 
 ### **Phase 1: The "Box" Prototype (Core Mechanics)**
 - [x] Initial SpriteKit Project Setup.
-- [ ] Basic virtual joystick implementation.
-- [ ] Enemy spawning logic (Edges of screen).
+- [x] Basic virtual joystick implementation.
+- [x] Enemy spawning logic (Edges of screen).
 - [ ] Basic collision detection (Game Over state).
 
 ### **Phase 2: Combat & Progression**
