@@ -10,18 +10,27 @@ struct PhysicsCategory {
     static let dataBit: UInt32  = 0b1000    // 8
 }
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    enum GameState {
+        case running
+        case gameOver
+    }
     
     // MARK: - Propriedades
     var player: SKSpriteNode!
     var joystick: Joystick!
     let gameCamera = SKCameraNode()
+    var gameState: GameState = .running
+    private let gameOverOverlayName = "gameOverOverlay"
     
     // MARK: - Ciclo de Vida
     override func didMove(to view: SKView) {
         // 1. Configurar a âncora e a câmara
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         self.backgroundColor = SKColor.darkGray
+        physicsWorld.gravity = .zero
+        physicsWorld.contactDelegate = self
         
         addChild(gameCamera)
         self.camera = gameCamera
@@ -41,6 +50,9 @@ class GameScene: SKScene {
         player.physicsBody?.affectedByGravity = false
         player.physicsBody?.allowsRotation = false
         player.physicsBody?.categoryBitMask = PhysicsCategory.player
+        player.physicsBody?.collisionBitMask = PhysicsCategory.none
+        player.physicsBody?.contactTestBitMask = PhysicsCategory.enemy
+        player.physicsBody?.usesPreciseCollisionDetection = true
         
         addChild(player)
     }
@@ -80,6 +92,9 @@ class GameScene: SKScene {
         enemy.physicsBody?.affectedByGravity = false
         enemy.physicsBody?.allowsRotation = false
         enemy.physicsBody?.categoryBitMask = PhysicsCategory.enemy
+        enemy.physicsBody?.collisionBitMask = PhysicsCategory.none
+        enemy.physicsBody?.contactTestBitMask = PhysicsCategory.player
+        enemy.physicsBody?.usesPreciseCollisionDetection = true
         
         // Calcula a posição de spawn baseada onde a câmara está no momento
         let randomEdge = Int.random(in: 0...3)
@@ -106,6 +121,7 @@ class GameScene: SKScene {
     
     // MARK: - Loop Principal
     override func update(_ currentTime: TimeInterval) {
+        guard gameState == .running else { return }
         
         // 1. A Câmara persegue o jogador
         gameCamera.position = player.position
@@ -133,5 +149,85 @@ class GameScene: SKScene {
             enemy.position.y += sin(angle) * enemySpeed
             enemy.zRotation = angle - .pi/2
         }
+    }
+    
+    // MARK: - Colisão
+    func didBegin(_ contact: SKPhysicsContact) {
+        guard gameState == .running else { return }
+        
+        let maskA = contact.bodyA.categoryBitMask
+        let maskB = contact.bodyB.categoryBitMask
+        let collisionMask = maskA | maskB
+        
+        if collisionMask == (PhysicsCategory.player | PhysicsCategory.enemy) {
+            triggerGameOver()
+        }
+    }
+    
+    // MARK: - Estado de Jogo
+    func triggerGameOver() {
+        guard gameState == .running else { return }
+        gameState = .gameOver
+        
+        removeAction(forKey: "enemySpawner")
+        joystick.removeFromParent()
+        
+        enumerateChildNodes(withName: "enemy") { node, _ in
+            node.removeAllActions()
+            node.physicsBody?.velocity = .zero
+        }
+        
+        showGameOverOverlay()
+    }
+    
+    func showGameOverOverlay() {
+        let overlay = SKNode()
+        overlay.name = gameOverOverlayName
+        overlay.zPosition = 300
+        
+        let panelSize = CGSize(width: 320, height: 180)
+        let panel = SKShapeNode(rectOf: panelSize, cornerRadius: 16)
+        panel.fillColor = SKColor(white: 0.08, alpha: 0.92)
+        panel.strokeColor = .white
+        panel.lineWidth = 2
+        overlay.addChild(panel)
+        
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.text = "GAME OVER"
+        title.fontSize = 34
+        title.fontColor = .white
+        title.position = CGPoint(x: 0, y: 25)
+        overlay.addChild(title)
+        
+        let subtitle = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        subtitle.text = "Toque para reiniciar"
+        subtitle.fontSize = 18
+        subtitle.fontColor = .lightGray
+        subtitle.position = CGPoint(x: 0, y: -35)
+        overlay.addChild(subtitle)
+        
+        gameCamera.addChild(overlay)
+    }
+    
+    func restartRun() {
+        if let scene = GameScene(fileNamed: "GameScene") {
+            scene.scaleMode = scaleMode
+            view?.presentScene(scene, transition: SKTransition.crossFade(withDuration: 0.25))
+            return
+        }
+        
+        let scene = GameScene(size: size)
+        scene.scaleMode = scaleMode
+        view?.presentScene(scene, transition: SKTransition.crossFade(withDuration: 0.25))
+    }
+    
+    // MARK: - Input
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if gameState == .gameOver {
+            restartRun()
+            return
+        }
+        
+        super.touchesBegan(touches, with: event)
     }
 }
