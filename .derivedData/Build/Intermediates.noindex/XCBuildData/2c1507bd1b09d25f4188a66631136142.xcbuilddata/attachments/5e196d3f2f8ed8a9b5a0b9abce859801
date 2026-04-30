@@ -1,0 +1,69 @@
+{
+  "" : {
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/QuadQuarantine-primary.dia",
+    "emit-module-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/QuadQuarantine-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/QuadQuarantine-primary-emit-module.dia",
+    "pch" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/QuadQuarantine-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/QuadQuarantine-primary.swiftdeps"
+  },
+  "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  },
+  "/Users/sora/Documents/Project-Quad-Quarantine/QuadQuarantine/QuadQuarantine/AppDelegate.swift" : {
+    "const-values" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.d",
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.dia",
+    "index-unit-output-path" : "/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.o",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/sora/Documents/Project-Quad-Quarantine/QuadQuarantine/QuadQuarantine/GameScene.swift" : {
+    "const-values" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.swiftconstvalues",
+    "dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.d",
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.dia",
+    "index-unit-output-path" : "/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.o",
+    "llvm-bc" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.bc",
+    "object" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.o",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene.swiftdeps",
+    "swiftmodule" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameScene~partial.swiftmodule"
+  },
+  "/Users/sora/Documents/Project-Quad-Quarantine/QuadQuarantine/QuadQuarantine/GameViewController.swift" : {
+    "const-values" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.swiftconstvalues",
+    "dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.d",
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.dia",
+    "index-unit-output-path" : "/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.o",
+    "llvm-bc" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.bc",
+    "object" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.o",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController.swiftdeps",
+    "swiftmodule" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/GameViewController~partial.swiftmodule"
+  },
+  "/Users/sora/Documents/Project-Quad-Quarantine/QuadQuarantine/QuadQuarantine/Joystick.swift" : {
+    "const-values" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.swiftconstvalues",
+    "dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.d",
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.dia",
+    "index-unit-output-path" : "/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.o",
+    "llvm-bc" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.bc",
+    "object" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.o",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick.swiftdeps",
+    "swiftmodule" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/Joystick~partial.swiftmodule"
+  },
+  "/Users/sora/Documents/Project-Quad-Quarantine/QuadQuarantine/QuadQuarantine/SceneDelegate.swift" : {
+    "const-values" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.swiftconstvalues",
+    "dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.d",
+    "diagnostics" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.dia",
+    "index-unit-output-path" : "/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.o",
+    "llvm-bc" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.bc",
+    "object" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.o",
+    "swift-dependencies" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate.swiftdeps",
+    "swiftmodule" : "/Users/sora/Documents/Project-Quad-Quarantine/.derivedData/Build/Intermediates.noindex/QuadQuarantine.build/Debug-iphoneos/QuadQuarantine.build/Objects-normal/arm64/SceneDelegate~partial.swiftmodule"
+  }
+}

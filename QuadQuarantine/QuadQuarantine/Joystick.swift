@@ -11,6 +11,7 @@ class Joystick: SKNode {
     let base: SKShapeNode
     let knob: SKShapeNode
     let radius: CGFloat
+    private let resetDuration: TimeInterval = 0.1
 
     // Direção atual do joystick (valores entre -1 e 1)
     var velocity = CGPoint.zero
@@ -39,6 +40,20 @@ class Joystick: SKNode {
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    func reset(animated: Bool = true) {
+        knob.removeAllActions()
+        
+        if animated {
+            let reset = SKAction.move(to: .zero, duration: resetDuration)
+            reset.timingMode = .easeOut
+            knob.run(reset)
+        } else {
+            knob.position = .zero
+        }
+        
+        velocity = .zero
+    }
 
     // MARK: - Toques
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -61,9 +76,10 @@ class Joystick: SKNode {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Quando largamos, o manípulo volta ao centro e a velocidade a zero
-        let reset = SKAction.move(to: .zero, duration: 0.1)
-        knob.run(reset)
-        velocity = .zero
+        reset()
+    }
+    
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        reset()
     }
 }

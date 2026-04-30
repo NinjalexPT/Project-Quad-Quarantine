@@ -21,6 +21,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         case running
         case perkSelection
         case gameOver
+        case paused
     }
     
     enum PerkType: String, CaseIterable {
@@ -60,6 +61,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var currentRunSurvivalTime: TimeInterval = 0
     private var currentRunDataBitsCollected: Int = 0
     private var bestTimeLabel: SKLabelNode!
+    
+    // --- Pause Feature Start
+    private var pauseButton: SKShapeNode!
+    // --- Pause Feature End
     
     // MARK: - Ciclo de Vida
     override func didMove(to view: SKView) {
@@ -159,6 +164,28 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         bestTimeLabel.position = CGPoint(x: 0, y: hudY + 38)
         bestTimeLabel.zPosition = 142
         gameCamera.addChild(bestTimeLabel)
+        
+        // --- Pause Feature Start
+        pauseButton = SKShapeNode(rectOf: CGSize(width: 44, height: 44), cornerRadius: 8)
+        pauseButton.fillColor = SKColor(white: 0.15, alpha: 0.85)
+        pauseButton.strokeColor = SKColor(white: 0.9, alpha: 1.0)
+        pauseButton.lineWidth = 2
+        pauseButton.position = CGPoint(x: size.width / 2 - 38, y: hudY + 38)
+        pauseButton.zPosition = 150
+        pauseButton.name = "pauseButton"
+        
+        let pauseSymbol = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        pauseSymbol.text = "❚❚"
+        pauseSymbol.fontSize = 26
+        pauseSymbol.fontColor = .white
+        pauseSymbol.verticalAlignmentMode = .center
+        pauseSymbol.horizontalAlignmentMode = .center
+        pauseSymbol.position = CGPoint.zero
+        pauseSymbol.isUserInteractionEnabled = false
+        pauseButton.addChild(pauseSymbol)
+        
+        gameCamera.addChild(pauseButton)
+        // --- Pause Feature End
         
         updateXPUI()
     }
@@ -288,12 +315,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Perk Menu
     func pauseForPerkSelection() {
         guard gameState == .running else { return }
+        joystick.reset(animated: false)
         gameState = .perkSelection
         isPaused = true
         showPerkMenuOverlay()
     }
     
     func resumeAfterPerkSelection() {
+        joystick.reset(animated: false)
         isPaused = false
         removePerkMenuOverlay()
         
@@ -620,18 +649,100 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         view?.presentScene(scene, transition: SKTransition.crossFade(withDuration: 0.25))
     }
     
+    // --- Pause Feature Start
+    func showPauseMenu() {
+        removePauseMenu()
+        
+        let overlay = SKNode()
+        overlay.name = "pauseOverlay"
+        overlay.zPosition = 320
+        
+        let dim = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
+        dim.fillColor = SKColor(white: 0.0, alpha: 0.75)
+        dim.strokeColor = .clear
+        dim.position = .zero
+        overlay.addChild(dim)
+        
+        let panel = SKShapeNode(rectOf: CGSize(width: 280, height: 160), cornerRadius: 20)
+        panel.fillColor = SKColor(white: 0.1, alpha: 0.95)
+        panel.strokeColor = SKColor(white: 0.9, alpha: 1.0)
+        panel.lineWidth = 2
+        panel.position = CGPoint(x: 0, y: 0)
+        overlay.addChild(panel)
+        
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.text = "Paused"
+        title.fontSize = 30
+        title.fontColor = .white
+        title.position = CGPoint(x: 0, y: 40)
+        panel.addChild(title)
+        
+        let resumeButton = SKShapeNode(rectOf: CGSize(width: 180, height: 48), cornerRadius: 12)
+        resumeButton.fillColor = SKColor(white: 0.2, alpha: 1.0)
+        resumeButton.strokeColor = SKColor(white: 0.95, alpha: 1.0)
+        resumeButton.lineWidth = 2
+        resumeButton.position = CGPoint(x: 0, y: -30)
+        resumeButton.name = "resumeButton"
+        panel.addChild(resumeButton)
+        
+        let resumeLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        resumeLabel.text = "Resume"
+        resumeLabel.fontSize = 22
+        resumeLabel.fontColor = .white
+        resumeLabel.verticalAlignmentMode = .center
+        resumeLabel.position = CGPoint.zero
+        resumeLabel.isUserInteractionEnabled = false
+        resumeButton.addChild(resumeLabel)
+        
+        gameCamera.addChild(overlay)
+    }
+    
+    func removePauseMenu() {
+        gameCamera.childNode(withName: "pauseOverlay")?.removeFromParent()
+    }
+    // --- Pause Feature End
+    
+    func cameraNodes(at touch: UITouch) -> [SKNode] {
+        let cameraLocation = touch.location(in: gameCamera)
+        return gameCamera.nodes(at: cameraLocation)
+    }
+    
+    func firstMatchingNodeName(in nodes: [SKNode], where predicate: (String) -> Bool) -> String? {
+        for node in nodes {
+            var currentNode: SKNode? = node
+            while let candidate = currentNode {
+                if let nodeName = candidate.name, predicate(nodeName) {
+                    return nodeName
+                }
+                currentNode = candidate.parent
+            }
+        }
+        return nil
+    }
+    
     // MARK: - Input
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let tappedNodes = cameraNodes(at: touch)
+        
+        // --- Pause Feature Start
+        if gameState == .paused {
+            if firstMatchingNodeName(in: tappedNodes, where: { $0 == "resumeButton" }) != nil {
+                joystick.reset(animated: false)
+                isPaused = false
+                removePauseMenu()
+                gameState = .running
+                return
+            }
+        }
+        
         if gameState == .gameOver {
             restartRun()
             return
         }
         
         if gameState == .perkSelection {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: gameCamera)
-            let tappedNodes = nodes(at: location)
-            if let perkNodeName = tappedNodes.compactMap(\.name).first(where: { $0.hasPrefix("perkOption_") }),
+            if let perkNodeName = firstMatchingNodeName(in: tappedNodes, where: { $0.hasPrefix("perkOption_") }),
                let perk = perkType(from: perkNodeName) {
                 pendingPerkSelections = max(0, pendingPerkSelections - 1)
                 applyPerk(perk)
@@ -639,6 +750,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             }
             return
         }
+        
+        if firstMatchingNodeName(in: tappedNodes, where: { $0 == "pauseButton" }) != nil {
+            joystick.reset(animated: false)
+            gameState = .paused
+            isPaused = true
+            showPauseMenu()
+            return
+        }
+        // --- Pause Feature End
         
         super.touchesBegan(touches, with: event)
     }
@@ -682,3 +802,4 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         return String(format: "%02d:%02d", minutes, seconds)
     }
 }
+
