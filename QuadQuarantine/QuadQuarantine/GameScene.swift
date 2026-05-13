@@ -663,7 +663,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         dim.position = .zero
         overlay.addChild(dim)
         
-        let panel = SKShapeNode(rectOf: CGSize(width: 280, height: 160), cornerRadius: 20)
+        // Panel aumentado para caber os dois botões
+        let panel = SKShapeNode(rectOf: CGSize(width: 280, height: 220), cornerRadius: 20)
         panel.fillColor = SKColor(white: 0.1, alpha: 0.95)
         panel.strokeColor = SKColor(white: 0.9, alpha: 1.0)
         panel.lineWidth = 2
@@ -674,14 +675,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         title.text = "Paused"
         title.fontSize = 30
         title.fontColor = .white
-        title.position = CGPoint(x: 0, y: 40)
+        title.position = CGPoint(x: 0, y: 70)
         panel.addChild(title)
         
-        let resumeButton = SKShapeNode(rectOf: CGSize(width: 180, height: 48), cornerRadius: 12)
+        // Botão Resume
+        let resumeButton = SKShapeNode(rectOf: CGSize(width: 210, height: 48), cornerRadius: 12)
         resumeButton.fillColor = SKColor(white: 0.2, alpha: 1.0)
         resumeButton.strokeColor = SKColor(white: 0.95, alpha: 1.0)
         resumeButton.lineWidth = 2
-        resumeButton.position = CGPoint(x: 0, y: -30)
+        resumeButton.position = CGPoint(x: 0, y: 10)
         resumeButton.name = "resumeButton"
         panel.addChild(resumeButton)
         
@@ -693,6 +695,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         resumeLabel.position = CGPoint.zero
         resumeLabel.isUserInteractionEnabled = false
         resumeButton.addChild(resumeLabel)
+        
+        // Botão Exit
+        let exitButton = SKShapeNode(rectOf: CGSize(width: 210, height: 48), cornerRadius: 12)
+        exitButton.fillColor = SKColor(red: 0.55, green: 0.05, blue: 0.05, alpha: 1.0)
+        exitButton.strokeColor = SKColor(white: 0.8, alpha: 1.0)
+        exitButton.lineWidth = 2
+        exitButton.position = CGPoint(x: 0, y: -50)
+        exitButton.name = "exitButton"
+        panel.addChild(exitButton)
+        
+        let exitLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        exitLabel.text = "Exit"
+        exitLabel.fontSize = 22
+        exitLabel.fontColor = .white
+        exitLabel.verticalAlignmentMode = .center
+        exitLabel.position = CGPoint.zero
+        exitLabel.isUserInteractionEnabled = false
+        exitButton.addChild(exitLabel)
         
         gameCamera.addChild(overlay)
     }
@@ -732,6 +752,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 isPaused = false
                 removePauseMenu()
                 gameState = .running
+                return
+            }
+            
+            if firstMatchingNodeName(in: tappedNodes, where: { $0 == "exitButton" }) != nil {
+                isPaused = false
+                removePauseMenu()
+                let menu = MainMenuScene(size: size)
+                menu.scaleMode = scaleMode
+                view?.presentScene(menu, transition: SKTransition.fade(
+                    with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1.0),
+                    duration: 0.4
+                ))
                 return
             }
         }
@@ -802,4 +834,3 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         return String(format: "%02d:%02d", minutes, seconds)
     }
 }
-
