@@ -24,6 +24,7 @@ class MainMenuScene: SKScene {
         addTitle()
         addStatsPanel()
         addPlayButton()
+        addStatsButton()
         addVersionLabel()
         animateScene()
     }
@@ -105,7 +106,7 @@ class MainMenuScene: SKScene {
         let glow = SKShapeNode(ellipseOf: CGSize(width: 520, height: 90))
         glow.fillColor = SKColor(red: 0.0, green: 0.85, blue: 0.65, alpha: 0.07)
         glow.strokeColor = .clear
-        glow.position = CGPoint(x: 0, y: size.height * 0.22)
+        glow.position = CGPoint(x: 0, y: size.height * 0.30)
         glow.zPosition = 2
         glow.name = "titleGlow"
         addChild(glow)
@@ -117,7 +118,7 @@ class MainMenuScene: SKScene {
         title.fontColor = .white
         title.horizontalAlignmentMode = .center
         title.verticalAlignmentMode = .center
-        title.position = CGPoint(x: -250, y: size.height * 0.22)
+        title.position = CGPoint(x: -255, y: size.height * 0.30)
         title.zPosition = 10
         title.name = "titleLabel"
         addChild(title)
@@ -128,7 +129,7 @@ class MainMenuScene: SKScene {
         title2.fontColor = SKColor(red: 0.0, green: 0.95, blue: 0.75, alpha: 1.0)
         title2.horizontalAlignmentMode = .center
         title2.verticalAlignmentMode = .center
-        title2.position = CGPoint(x: 150, y: size.height * 0.22)
+        title2.position = CGPoint(x: 162, y: size.height * 0.30)
         title2.zPosition = 10
         title2.name = "titleLabel2"
         addChild(title2)
@@ -137,14 +138,14 @@ class MainMenuScene: SKScene {
         let rule = SKShapeNode(rectOf: CGSize(width: 460, height: 1.5))
         rule.fillColor = SKColor(red: 0.0, green: 0.95, blue: 0.75, alpha: 0.45)
         rule.strokeColor = .clear
-        rule.position = CGPoint(x: 0, y: size.height * 0.22 - 46)
+        rule.position = CGPoint(x: 0, y: size.height * 0.30 - 46)
         rule.zPosition = 10
         addChild(rule)
 
         // Subtitle / tagline
         let sub = SKLabelNode()
         sub.attributedText = NSAttributedString(
-            string: "SURVIVE. EVOLVE. ENDURE.",
+            string: "SURVIVE. EVOLVE. ESCAPE.",
             attributes: [
                 .font: UIFont(name: "AvenirNext-Medium", size: 15)!,
                 .foregroundColor: UIColor(white: 0.55, alpha: 1.0),
@@ -152,7 +153,7 @@ class MainMenuScene: SKScene {
             ]
         )
         sub.horizontalAlignmentMode = .center
-        sub.position = CGPoint(x: 0, y: size.height * 0.22 - 66)
+        sub.position = CGPoint(x: 0, y: size.height * 0.30 - 66)
         sub.zPosition = 10
         addChild(sub)
     }
@@ -167,7 +168,7 @@ class MainMenuScene: SKScene {
 
         let panelW: CGFloat = 380
         let panelH: CGFloat = 96
-        let panelY: CGFloat = -size.height * 0.08
+        let panelY: CGFloat = size.height * 0.00
 
         let panel = SKShapeNode(rectOf: CGSize(width: panelW, height: panelH), cornerRadius: 12)
         panel.fillColor = SKColor(white: 0.08, alpha: 0.85)
@@ -238,7 +239,7 @@ class MainMenuScene: SKScene {
     // MARK: - Play Button
 
     private func addPlayButton() {
-        let btnY: CGFloat = -size.height * 0.38
+        let btnY: CGFloat = -size.height * 0.24
 
         // Outer glow ring
         let ring = SKShapeNode(rectOf: CGSize(width: 218, height: 64), cornerRadius: 32)
@@ -281,6 +282,29 @@ class MainMenuScene: SKScene {
             SKAction.group([scaleUp, fadeUp]),
             SKAction.group([scaleDown, fadeDown])
         ])))
+    }
+
+    // MARK: - Stats Button
+
+    private func addStatsButton() {
+        let btn = SKShapeNode(rectOf: CGSize(width: 140, height: 38), cornerRadius: 10)
+        btn.fillColor = SKColor(white: 0.08, alpha: 0.9)
+        btn.strokeColor = SKColor(white: 0.22, alpha: 1.0)
+        btn.lineWidth = 1.5
+        btn.position = CGPoint(x: 0, y: -size.height * 0.38)
+        btn.zPosition = 5
+        btn.name = "statsButton"
+        addChild(btn)
+
+        let lbl = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        lbl.text = "PLAYER STATS"
+        lbl.fontSize = 13
+        lbl.fontColor = SKColor(red: 0.0, green: 0.95, blue: 0.75, alpha: 0.85)
+        lbl.horizontalAlignmentMode = .center
+        lbl.verticalAlignmentMode = .center
+        lbl.position = CGPoint.zero
+        lbl.isUserInteractionEnabled = false
+        btn.addChild(lbl)
     }
 
     // MARK: - Version Label
@@ -328,7 +352,19 @@ class MainMenuScene: SKScene {
         let location = touch.location(in: self)
         let tapped = nodes(at: location)
 
-        let hitPlay = tapped.contains(where: { $0.name == "playButton" || $0.name == "playRing" })
+        let hitPlay  = tapped.contains(where: { $0.name == "playButton" || $0.name == "playRing" })
+        let hitStats = tapped.contains(where: { $0.name == "statsButton" })
+
+        if hitStats {
+            let scene = PlayerStatsScene(size: size)
+            scene.scaleMode = scaleMode
+            view?.presentScene(scene, transition: SKTransition.fade(
+                with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1.0),
+                duration: 0.35
+            ))
+            return
+        }
+
         guard hitPlay else { return }
 
         // Brief scale-down feedback, then transition
