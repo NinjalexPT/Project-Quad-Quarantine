@@ -34,11 +34,11 @@
 ---
 
 ## 🎯 MVP Scope (Minimum Viable Product)
-- [ ] **Player:** Blue square with joystick movement.
-- [ ] **Enemy:** Red square that tracks the player's position.
-- [ ] **Combat:** Auto-targeting yellow projectiles.
-- [ ] **XP System:** Functional level-up pause menu with 3 basic stat perks (Speed, Damage, Fire Rate).
-- [ ] **High Score:** Local persistence for "Best Survival Time."
+- [x] **Player:** Blue square with joystick movement.
+- [x] **Enemy:** Red square that tracks the player's position.
+- [x] **Combat:** Auto-targeting yellow projectiles.
+- [x] **XP System:** Functional level-up pause menu with 3 basic stat perks (Speed, Damage, Fire Rate).
+- [x] **High Score:** Local persistence for "Best Survival Time."
 
 ---
 
@@ -48,12 +48,12 @@
 - [x] Initial SpriteKit Project Setup.
 - [x] Basic virtual joystick implementation.
 - [x] Enemy spawning logic (Edges of screen).
-- [ ] Basic collision detection (Game Over state).
+- [x] Basic collision detection (Game Over state).
 
 ### **Phase 2: Combat & Progression**
-- [ ] Nearest-target auto-aim logic.
-- [ ] XP Drop logic and UI progress bar.
-- [ ] Mid-run "Perk Menu" (Pausing the `SKScene`).
+- [x] Nearest-target auto-aim logic.
+- [x] XP Drop logic and UI progress bar.
+- [x] Mid-run "Perk Menu" (Pausing the `SKScene`).
 - [ ] Permanent upgrade shop in Main Menu.
 
 ### **Phase 3: Juice & Polish**
