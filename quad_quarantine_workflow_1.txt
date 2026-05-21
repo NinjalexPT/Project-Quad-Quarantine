@@ -1,0 +1,345 @@
+================================================================
+  QUAD QUARANTINE — WORKFLOW DO PROJETO
+  Documento de contexto técnico e estado de desenvolvimento
+================================================================
+
+Projeto: Quad Quarantine
+Plataforma: iOS (SpriteKit / Swift 6.3)
+Xcode: 26.4+
+Versão: v0.1 (Protótipo)
+Autor: Hugo Miguel Ribeiro Oliveira
+Data de análise: Maio 2026
+
+================================================================
+  CONCEITO DO JOGO
+================================================================
+
+Top-down arena shooter no estilo "Vampire Survivors". O jogador
+é um estudante preso num estacionamento universitário a combater
+ondas infinitas de infetados. O combate é automático (auto-aim),
+e o foco do jogador é manobrar com o joystick virtual para
+sobreviver o máximo de tempo possível.
+
+Loop central:
+  Mover → Inimigos morrem → Dropp Data Bits → Ganhar XP →
+  Level Up → Escolher Perk → Repetir (dificuldade escala)
+
+================================================================
+  ESTRUTURA DE FICHEIROS
+================================================================
+
+QuadQuarantine/
+├── AppDelegate.swift         — Entry point da app iOS
+├── SceneDelegate.swift       — Gestão do ciclo de vida da janela
+├── GameViewController.swift  — Apresenta o SKView e carrega cena
+├── GameScene.swift           — ★ CENA PRINCIPAL (toda a lógica de jogo)
+├── MainMenuScene.swift       — Menu principal com stats persistidas
+├── PlayerStatsScene.swift    — Ecrã de estatísticas e reset de progresso
+├── Joystick.swift            — Componente de joystick virtual reutilizável
+├── GameScene.sks             — Layout visual da cena (SpriteKit editor)
+├── Actions.sks               — Definições de animações/ações
+├── Assets.xcassets/          — Sprites, ícone da app
+├── aBullet.wav               — Som de disparo
+└── aDeath.wav                — Som de morte de inimigo
+
+================================================================
+  FLUXO DE NAVEGAÇÃO ENTRE CENAS
+================================================================
+
+  [ MainMenuScene ]
+       |
+       |-- Toque em "PLAY" ──────────────→ [ GameScene ]
+       |                                        |
+       |-- Toque em "PLAYER STATS" ──→ [ PlayerStatsScene ]
+                                                |
+                                           ← BACK
+
+  GameScene → Game Over → Toque em qualquer sítio → GameScene (restart)
+  GameScene → Botão Pause → Overlay Pause
+                              |-- Resume → GameScene (continua)
+                              |-- Exit   → MainMenuScene
+
+================================================================
+  GAMESCENE — WORKFLOW DETALHADO
+================================================================
+
+--- INICIALIZAÇÃO (didMove) ---
+
+1. Carrega progresso persistido (UserDefaults):
+   - bestSurvivalTime, totalDataBitsBank, highestLevelReached
+
+2. Configura física: sem gravidade, delegate de contacto = self
+
+3. Setup por ordem:
+   a) Background  — Tileamento 52×52 de sBg.png (64px/tile) +
+                    mapa central sMap.png (320×320)
+   b) Player      — Sprite animado (idle 4 frames / run 7 frames)
+                    com physicsBody rectangular, sem colisão
+                    de posição (só contacto)
+   c) Gun         — Nó filho do player (sGun.png, offset direita)
+   d) Joystick    — Filho da câmara (posição fixa no ecrã, canto
+                    inferior esquerdo)
+   e) HUD         — XP bar, level label, best time label, pause btn
+                    (todos filhos da gameCamera → ficam fixos no ecrã)
+
+4. Inicia o spawner de inimigos (SKAction repeat every 1.5s)
+5. Inicia o auto-fire (SKAction repeat every 0.45s por defeito)
+
+
+--- LOOP PRINCIPAL (update, cada frame) ---
+
+1. Mede tempo de sobrevivência da run atual
+2. Câmara segue sempre o player (gameCamera.position = player.position)
+3. Deteta movimento do joystick:
+   - Se velocity != zero → animação de corrida, move player
+   - Se velocity == zero → animação idle
+   - Flip horizontal do sprite consoante direção (xScale = ±1)
+4. Move todos os inimigos em direção ao player (velocidade fixa 2.0)
+   - Flip horizontal do inimigo consoante direção de movimento
+
+
+--- SISTEMA DE INIMIGOS ---
+
+Spawn:
+  - A cada 1.5 segundos, spawna um inimigo numa das 4 bordas do ecrã
+    (fora do campo de visão da câmara, margem de 80px)
+  - Animação de andar: sEnemy_strip7.png (7 frames, 0.1s/frame)
+  - Health inicial: 1 (armazenado em userData["health"])
+
+Comportamento:
+  - Movem-se linearmente em direção ao player a cada frame
+  - Sem pathfinding, sem obstáculos — movimento direto
+
+Morte:
+  - Remove o inimigo do parent
+  - Mostra sEnemyDead.png a desaparecer (fade out 0.4s)
+  - Toca aDeath.wav
+  - Spawna um Data Bit (círculo ciano) na posição do inimigo
+
+
+--- SISTEMA DE COMBATE (Auto-Fire) ---
+
+Intervalo base: 0.45 segundos (reduzível por perk Fire Rate)
+
+Cada disparo:
+  1. Procura o inimigo mais próximo (nearestEnemy via distância²)
+  2. Calcula direção normalizada (dx/dist, dy/dist)
+  3. Spawna bullet (sBullet.png, 16×16) na posição do player
+  4. Bullet move-se 900px nessa direção a 520px/s
+  5. Ao fim do percurso, é removido automaticamente
+  6. Toca aBullet.wav em cada disparo
+
+Colisão bullet → enemy (didBegin):
+  - Remove bullet
+  - Aplica dano (bulletDamage, base 1)
+  - Se health do inimigo > 0: atualiza userData["health"]
+  - Se health == 0: trigger morte (ver acima)
+
+
+--- SISTEMA DE XP E LEVEL UP ---
+
+Data Bits:
+  - Círculo ciano com physicsBody (isDynamic: false)
+  - Jogador recolhe por contacto físico
+  - Cada Data Bit = 1 XP
+
+Level Up:
+  - XP necessário: 5 XP para nível 2, +3 XP por nível seguinte
+    (ex: Nível 2 = 5, Nível 3 = 8, Nível 4 = 11, ...)
+  - Ao atingir o threshold: currentLevel++, mostra "LEVEL UP!" (pop-in)
+  - Pausa o jogo (isPaused = true, gameState = .perkSelection)
+  - Abre o Perk Menu
+
+Perk Menu (overlay):
+  - 3 perks aleatórios de uma lista de 3 possíveis (shuffled.prefix(3))
+  - Possíveis perks:
+      · Speed +15%      → playerMoveSpeed *= 1.15
+      · Damage +1       → bulletDamage += 1
+      · Fire Rate +20%  → autoFireInterval = max(0.15, interval * 0.8)
+  - Jogador toca num perk → aplica efeito → resume jogo
+  - Se tiver vários level-ups pendentes, abre o menu várias vezes
+
+
+--- GAME OVER ---
+
+Trigger: contacto físico player → enemy
+
+1. gameState = .gameOver
+2. Finaliza a run:
+   - Atualiza bestSurvivalTime se bateu recorde
+   - Adiciona Data Bits recolhidos ao banco total
+   - Atualiza highestLevelReached se superou
+   - Persiste tudo no UserDefaults
+3. Para spawner de inimigos e auto-fire
+4. Remove joystick
+5. Congela todos os inimigos (removeAllActions)
+6. Mostra overlay de Game Over:
+   - "GAME OVER"
+   - Tempo de sobrevivência atual vs. recorde
+   - Total de Data Bits e melhor nível
+7. Qualquer toque → restart (nova GameScene via crossFade 0.25s)
+
+
+--- PHYSICS CATEGORIES (bitmask) ---
+
+  none     = 0b0000  (sem contacto)
+  player   = 0b0001
+  enemy    = 0b0010
+  bullet   = 0b0100
+  dataBit  = 0b1000
+
+Contactos ativos:
+  player  ↔  enemy    → Game Over
+  bullet  ↔  enemy    → Dano/Morte inimigo
+  player  ↔  dataBit  → Recolha XP
+
+Colisões de posição desativadas para todos (collisionBitMask = .none)
+→ Objetos passam uns pelos outros, só eventos de contacto são usados
+
+
+================================================================
+  MAINMENUSCENE — WORKFLOW
+================================================================
+
+Ecrã principal com estética "digital arena" (dark background + dot grid).
+
+Elementos visuais:
+  - Grid de pontos subtis (40px de espaçamento)
+  - Linhas de canto decorativas (cor ciano-verde)
+  - Scanline animada de baixo para cima (loop 4.5s)
+  - Título "QUAD" (branco) + "QUARANTINE" (ciano)
+  - Tagline "SURVIVE. EVOLVE. ESCAPE." com letter-spacing
+  - Painel de stats com 3 colunas: Best Time | Data Bits | Highest Lvl
+    (lidos do UserDefaults em tempo real)
+  - Botão PLAY (verde ciano, pulsação animada no anel exterior)
+  - Botão PLAYER STATS (discreto, em baixo)
+  - Label de versão "v0.1" (canto inferior direito)
+
+Animação de entrada: fade-in da cena (0.65s) + float suave do título
+
+
+================================================================
+  PLAYERSTATSCENE — WORKFLOW
+================================================================
+
+Ecrã de stats detalhadas, acessível pelo menu principal.
+
+Mostra 3 cards:
+  1. BEST SURVIVAL TIME  (cor: ciano-verde)
+  2. TOTAL DATA BITS     (cor: azul)
+  3. HIGHEST LEVEL REACHED (cor: amarelo/dourado)
+
+Botão "RESET PROGRESS":
+  - Abre overlay de confirmação ("This cannot be undone.")
+  - Confirmar → zera UserDefaults → recarrega cena (fade 0.25s)
+  - Cancelar → fecha overlay
+
+Botão "← BACK" → regressa ao MainMenuScene (fade 0.35s)
+
+
+================================================================
+  JOYSTICK — COMPONENTE REUTILIZÁVEL
+================================================================
+
+Classe: Joystick : SKNode (isUserInteractionEnabled = true)
+
+Estrutura:
+  - base: SKShapeNode (círculo exterior, stroke branco, alpha 0.5)
+  - knob: SKShapeNode (círculo interior, 40% do raio, fill branco)
+
+Comportamento:
+  - touchesMoved: calcula distância do toque ao centro
+      · Se dist > radius → knob fica na borda (atan2 + cos/sin)
+      · Se dist ≤ radius → knob segue o toque diretamente
+      · velocity = knob.position / radius  (normalizado -1 a 1)
+  - touchesEnded / touchesCancelled → reset() com animação (0.1s)
+  - reset(animated: false) usado ao pausar/game over para evitar
+    drift de input
+
+Usado em GameScene: posicionado no canto inferior esquerdo da câmara.
+O player consome joystick.velocity no update() a cada frame.
+
+
+================================================================
+  PERSISTÊNCIA DE DADOS
+================================================================
+
+Motor: UserDefaults.standard
+
+Chaves:
+  "bestSurvivalTime"    → Double  — melhor tempo de sobrevivência
+  "totalDataBitsBank"   → Int     — Data Bits acumulados (todas as runs)
+  "highestLevelReached" → Int     — nível mais alto alguma vez atingido
+
+Fluxo:
+  - Carregado no início de cada GameScene (loadPersistentProgress)
+  - Atualizado no fim de cada run (finalizeRunProgress → persistProgress)
+  - Lido no MainMenuScene e PlayerStatsScene para exibição
+  - Resetável em PlayerStatsScene (com confirmação)
+
+
+================================================================
+  ESTADO ATUAL DE DESENVOLVIMENTO
+================================================================
+
+✅ IMPLEMENTADO:
+  - Setup do projeto Xcode / SpriteKit
+  - Joystick virtual funcional (normalizado, com reset animado)
+  - Movimento do player com sprites animados (idle / run)
+  - Spawn de inimigos nas bordas do ecrã
+  - Inimigos com sprite animado, movimento em direção ao player
+  - Sistema de auto-fire com targeting do inimigo mais próximo
+  - Colisão bullet-enemy com sistema de health (via userData)
+  - Morte de inimigo: sprite morto, som, drop de Data Bit
+  - Recolha de Data Bits por contacto físico
+  - Sistema de XP e level-up com escalonamento progressivo
+  - Perk Menu (pausa o jogo, 3 opções aleatórias de 3 possíveis)
+  - Perks funcionais: Speed, Damage, Fire Rate
+  - Game Over por contacto player-enemy
+  - Persistência de bestTime, dataBits, highestLevel
+  - Menu Principal com estética cyberpunk + stats ao vivo
+  - Ecrã de Player Stats com reset de progresso
+  - Botão de pausa com overlay (Resume / Exit)
+  - Background tilado (sBg) + mapa central (sMap)
+  - Câmara que segue o player
+  - Sons de disparo e morte
+  - HUD: XP bar, level, tempo recorde, botão pause
+
+❌ POR IMPLEMENTAR (do roadmap):
+  - Colisão completa com Game Over state (está implementado,
+    mas o README marca como pendente — já está feito no código)
+  - Partículas (SKEmitterNode) para impactos e explosões
+  - Música de fundo
+  - Loja de upgrades permanentes no menu principal
+  - Variedade de inimigos (Sprinters, Tanks)
+  - Obstáculos interativos no mapa
+  - Variedade de armas (shotgun, laser)
+  - Efeitos de câmara (screen shake)
+  - Iluminação dinâmica
+  - Tuning de dificuldade escalável ao longo do tempo
+
+================================================================
+  NOTAS TÉCNICAS RELEVANTES
+================================================================
+
+- Object pooling: NÃO implementado ainda (mencionado no README
+  como objetivo, mas bullets e inimigos são criados/destruídos
+  diretamente). A implementar para otimização de FPS.
+
+- Câmara: gameCamera (SKCameraNode) é filha da scene. O joystick
+  e o HUD são filhos da câmara, garantindo posição fixa no ecrã
+  independentemente do movimento do player.
+
+- Física sem gravidade (physicsWorld.gravity = .zero).
+  Movimento manual de todos os nós via update().
+
+- Animações sprite: extraídas de spritesheets via SKTexture(rect:)
+  no método estático makeFrames(from:frameCount:).
+
+- Estado do jogo controlado por enum GameState:
+    .running | .perkSelection | .gameOver | .paused
+  Todas as ações críticas verificam o estado antes de executar.
+
+================================================================
+  FIM DO DOCUMENTO
+================================================================
