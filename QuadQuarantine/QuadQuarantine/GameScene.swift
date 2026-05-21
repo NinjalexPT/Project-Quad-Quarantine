@@ -139,20 +139,31 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Background
     func setupBackground() {
-        // Fundo principal: imagem "fundo" cobre todo o mapa
-        let mapSize: CGFloat = 3328
-        let fundoNode = SKSpriteNode(imageNamed: "fundo")
-        fundoNode.size = CGSize(width: mapSize, height: mapSize)
-        fundoNode.position = .zero
-        fundoNode.zPosition = -10
-        addChild(fundoNode)
+        // Fundo: tile de Fundo.png (1024x1024) em grelha para cobrir o mapa inteiro
+        let tileSize: CGFloat = 128   // cada tile — ajusta se ficares a gostar de outro tamanho
+        let count     = 28            // 28 * 128 = 3584px em cada eixo
+        let half      = CGFloat(count) * tileSize / 2.0
+
+        for col in 0..<count {
+            for row in 0..<count {
+                let tile = SKSpriteNode(imageNamed: "Fundo")
+                tile.size     = CGSize(width: tileSize, height: tileSize)
+                tile.texture?.filteringMode = .nearest
+                tile.position = CGPoint(
+                    x: CGFloat(col) * tileSize - half + tileSize / 2,
+                    y: CGFloat(row) * tileSize - half + tileSize / 2
+                )
+                tile.zPosition = -10
+                addChild(tile)
+            }
+        }
 
         // Mapa central por cima do fundo
         let mapNode = SKSpriteNode(imageNamed: "sMap")
         mapNode.size = CGSize(width: 320, height: 320)
         mapNode.texture?.filteringMode = .nearest
-        mapNode.position = .zero
-        mapNode.zPosition = -9
+        mapNode.position   = .zero
+        mapNode.zPosition  = -9
         addChild(mapNode)
 
         // Arbustos placeholder
