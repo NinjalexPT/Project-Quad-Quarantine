@@ -9,7 +9,8 @@ struct PhysicsCategory {
     static let enemy:   UInt32 = 0b10
     static let bullet:  UInt32 = 0b100
     static let dataBit: UInt32 = 0b1000
-    static let powerUp: UInt32 = 0b10000
+    static let powerUp:  UInt32 = 0b10000
+    static let scrapBit: UInt32 = 0b100000
 }
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
@@ -91,6 +92,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var currentRunSurvivalTime:      TimeInterval = 0
     private var currentRunDataBitsCollected: Int          = 0
     private var runStartTime:                TimeInterval?
+    private var currentRunBitsCollected: Int    = 0
+    private let baseScrapBitDropChance:  Double = 0.25
+    private var currentRunBitsCollected: Int    = 0
+    private let baseScrapBitDropChance:  Double = 0.25
 
     // MARK: - HUD Nodes
     private var xpBarFillNode: SKShapeNode!
@@ -121,6 +126,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Lifecycle
     override func didMove(to view: SKView) {
         loadPersistentProgress()
+        applyPermanentUpgrades()
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
         backgroundColor = SKColor(red: 0.05, green: 0.05, blue: 0.05, alpha: 1.0)
         physicsWorld.gravity = .zero
@@ -220,7 +226,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         player.physicsBody?.categoryBitMask    = PhysicsCategory.player
         player.physicsBody?.collisionBitMask   = PhysicsCategory.none
         player.physicsBody?.contactTestBitMask =
-            PhysicsCategory.enemy | PhysicsCategory.dataBit | PhysicsCategory.powerUp
+            PhysicsCategory.enemy | PhysicsCategory.dataBit | PhysicsCategory.powerUp | PhysicsCategory.scrapBit | PhysicsCategory.scrapBit
         player.physicsBody?.usesPreciseCollisionDetection = true
         addChild(player)
 
@@ -342,8 +348,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         pauseButton.addChild(pauseSymbol)
         gameCamera.addChild(pauseButton)
 
+        let bitsHUD = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        bitsHUD.name = "bitsHUDLabel"
+        bitsHUD.fontSize = 14
+        bitsHUD.fontColor = SKColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1.0)
+        bitsHUD.horizontalAlignmentMode = .right
+        bitsHUD.position  = CGPoint(x: size.width / 2 - 48, y: hudY - 4)
+        bitsHUD.zPosition = 142
+        gameCamera.addChild(bitsHUD)
+
         updateXPUI()
         updateHealthUI()
+        updateBitsHUD()
     }
 
     // MARK: - Enemy Spawner
@@ -853,6 +869,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     showEnemyDeath(at: pos)
                     run(SKAction.playSoundFileNamed("aDeath.wav", waitForCompletion: false))
                     spawnDataBit(at: pos)
+                    tryDropScrapBit(at: pos)
                 }
                 enemyNode?.removeFromParent()
             }
@@ -862,6 +879,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if mask == (PhysicsCategory.player | PhysicsCategory.dataBit) {
             let dataBitNode = maskA == PhysicsCategory.dataBit ? contact.bodyA.node : contact.bodyB.node
             collectDataBit(dataBitNode)
+        }
+
+        // Player apanha scrap bit
+        if mask == (PhysicsCategory.player | PhysicsCategory.scrapBit) {
+            let bitNode = maskA == PhysicsCategory.scrapBit ? contact.bodyA.node : contact.bodyB.node
+            collectScrapBit(bitNode)
+        }
+
+        // Player apanha scrap bit (moeda da loja)
+        if mask == (PhysicsCategory.player | PhysicsCategory.scrapBit) {
+            let bitNode = maskA == PhysicsCategory.scrapBit ? contact.bodyA.node : contact.bodyB.node
+            collectScrapBit(bitNode)
         }
 
         // Player apanha iman
@@ -1135,6 +1164,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         highestLevelReached = max(highestLevelReached, currentLevel)
         bestMaxHealth       = max(bestMaxHealth, playerMaxHealth)
         bestHealthRegen     = max(bestHealthRegen, Int(healthRegenPerSecond))
+        if currentRunBitsCollected > 0 {
+            UpgradeManager.shared.bitsBank += currentRunBitsCollected
+            currentRunBitsCollected = 0
+        }
+        if currentRunBitsCollected > 0 {
+            UpgradeManager.shared.bitsBank += currentRunBitsCollected
+            currentRunBitsCollected = 0
+        }
         persistProgress()
         refreshBestTimeUI()
     }
@@ -1157,4 +1194,93 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let t = Int(max(0, time.rounded(.down)))
         return String(format: "%02d:%02d", t / 60, t % 60)
     }
+    // MARK: - Permanent Upgrades
+    private func applyPermanentUpgrades() {
+        let mgr = UpgradeManager.shared
+        playerMaxHealth      += mgr.bonusMaxHealth
+        playerCurrentHealth   = playerMaxHealth
+        bulletDamage         += mgr.bonusDamage
+        autoFireInterval     *= mgr.fireRateMultiplier
+        playerMoveSpeed      *= CGFloat(mgr.speedMultiplier)
+        healthRegenPerSecond += mgr.bonusHealthRegen
+    }
+
+    // MARK: - Scrap Bits (moeda permanente)
+    private func tryDropScrapBit(at position: CGPoint) {
+        let chance = baseScrapBitDropChance + UpgradeManager.shared.extraBitDropChance
+        guard Double.random(in: 0..<1) < chance else { return }
+        let ox = CGFloat.random(in: -10...10)
+        let oy = CGFloat.random(in: -10...10)
+        spawnScrapBit(at: CGPoint(x: position.x + ox, y: position.y + oy))
+    }
+
+    private func spawnScrapBit(at position: CGPoint) {
+        let r: CGFloat = 7
+        let bit = SKShapeNode(path: hexagonPath(radius: r))
+        bit.name        = "scrapBit"
+        bit.fillColor   = SKColor(red: 1.0, green: 0.78, blue: 0.0, alpha: 1.0)
+        bit.strokeColor = SKColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 1.0)
+        bit.lineWidth   = 1.5
+        bit.position    = position
+        bit.zPosition   = 41
+        let pulse = SKAction.repeatForever(SKAction.sequence([
+            SKAction.scale(to: 1.22, duration: 0.4),
+            SKAction.scale(to: 1.00, duration: 0.4)
+        ]))
+        bit.run(pulse)
+        bit.physicsBody = SKPhysicsBody(circleOfRadius: r)
+        bit.physicsBody?.isDynamic          = false
+        bit.physicsBody?.affectedByGravity  = false
+        bit.physicsBody?.categoryBitMask    = PhysicsCategory.scrapBit
+        bit.physicsBody?.collisionBitMask   = PhysicsCategory.none
+        bit.physicsBody?.contactTestBitMask = PhysicsCategory.player
+        bit.physicsBody?.usesPreciseCollisionDetection = true
+        addChild(bit)
+    }
+
+    private func hexagonPath(radius: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+        for i in 0..<6 {
+            let angle = CGFloat(i) * .pi / 3 - .pi / 6
+            let x = radius * cos(angle)
+            let y = radius * sin(angle)
+            if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
+            else       { path.addLine(to: CGPoint(x: x, y: y)) }
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    func collectScrapBit(_ node: SKNode?) {
+        guard let node = node else { return }
+        node.removeAllActions()
+        node.run(SKAction.sequence([
+            SKAction.scale(to: 1.6, duration: 0.08),
+            SKAction.fadeOut(withDuration: 0.12),
+            .removeFromParent()
+        ]))
+        currentRunBitsCollected += 1
+        updateBitsHUD()
+        let lbl = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        lbl.text      = "+1"
+        lbl.fontSize  = 14
+        lbl.fontColor = SKColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1.0)
+        lbl.position  = CGPoint(x: node.position.x, y: node.position.y + 16)
+        lbl.zPosition = 200
+        addChild(lbl)
+        lbl.run(SKAction.sequence([
+            SKAction.group([
+                SKAction.moveBy(x: 0, y: 24, duration: 0.45),
+                SKAction.fadeOut(withDuration: 0.45)
+            ]),
+            .removeFromParent()
+        ]))
+    }
+
+    func updateBitsHUD() {
+        if let lbl = gameCamera.childNode(withName: "bitsHUDLabel") as? SKLabelNode {
+            lbl.text = "Bits: \(currentRunBitsCollected)"
+        }
+    }
+
 }

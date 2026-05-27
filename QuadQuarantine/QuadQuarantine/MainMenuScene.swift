@@ -14,6 +14,8 @@ class MainMenuScene: SKScene {
         static let highestLevelReached = "highestLevelReached"
     }
 
+    // Bits bank lido directamente do UpgradeManager
+
     // MARK: - Lifecycle
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -166,6 +168,7 @@ class MainMenuScene: SKScene {
         let bestTime        = defaults.double(forKey: PersistenceKey.bestSurvivalTime)
         let dataBits        = defaults.integer(forKey: PersistenceKey.totalDataBitsBank)
         let highestLevel    = max(1, defaults.integer(forKey: PersistenceKey.highestLevelReached))
+        let permBits        = UpgradeManager.shared.bitsBank
 
         let panelW: CGFloat = 380
         let panelH: CGFloat = 96
@@ -360,6 +363,35 @@ class MainMenuScene: SKScene {
 
     // MARK: - Version Label
 
+    private func addShopButton() {
+        let btnW: CGFloat = 160; let btnH: CGFloat = 48
+        let btn = SKShapeNode(rectOf: CGSize(width: btnW, height: btnH), cornerRadius: 14)
+        btn.fillColor   = SKColor(red: 0.65, green: 0.42, blue: 0.0, alpha: 0.85)
+        btn.strokeColor = SKColor(red: 1.0,  green: 0.82, blue: 0.0, alpha: 0.9)
+        btn.lineWidth   = 2
+        btn.position    = CGPoint(x: size.width * 0.30, y: size.height * -0.12)
+        btn.zPosition   = 10
+        btn.name        = "shopButton"
+        addChild(btn)
+        let lbl = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        lbl.text     = "SHOP"
+        lbl.fontSize = 20
+        lbl.fontColor = .white
+        lbl.verticalAlignmentMode   = .center
+        lbl.horizontalAlignmentMode = .center
+        lbl.isUserInteractionEnabled = false
+        btn.addChild(lbl)
+        let bits = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        bits.text     = "Bits: \(UpgradeManager.shared.bitsBank)"
+        bits.fontSize = 12
+        bits.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 0.9)
+        bits.verticalAlignmentMode   = .center
+        bits.horizontalAlignmentMode = .center
+        bits.position = CGPoint(x: 0, y: -16)
+        bits.isUserInteractionEnabled = false
+        btn.addChild(bits)
+    }
+
     private func addVersionLabel() {
         let ver = SKLabelNode(fontNamed: "AvenirNext-Regular")
         ver.text = "v0.1"
@@ -399,6 +431,20 @@ class MainMenuScene: SKScene {
     // MARK: - Input
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let loc   = touch.location(in: self)
+        let nodes = self.nodes(at: loc)
+        if nodes.contains(where: { $0.name == "shopButton" || $0.parent?.name == "shopButton" }) {
+            let shop = ShopScene(size: size); shop.scaleMode = scaleMode
+            view?.presentScene(shop, transition: SKTransition.fade(
+                with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1), duration: 0.3))
+            return
+        }
+        // original touch handling continues below
+        _ = (touch, nodes) // suppress unused warnings
+    }
+
+    private func _originalTouchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         let tapped = nodes(at: location)
