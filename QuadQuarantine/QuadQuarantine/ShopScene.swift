@@ -52,7 +52,7 @@ class ShopScene: SKScene {
                 addChild(dot)
             }
         }
-        addCorner(x: -size.width/2 + 28, y:  size.height/2 - 28, dx:  36, dy: -36)
+        addCorner(x: -size.width/2 + 28, y:  size.height/2 - 70, dx:  36, dy: -36)
         addCorner(x:  size.width/2 - 28, y: -size.height/2 + 28, dx: -36, dy:  36)
     }
 
