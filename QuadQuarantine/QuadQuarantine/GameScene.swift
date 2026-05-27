@@ -224,13 +224,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         player.physicsBody?.usesPreciseCollisionDetection = true
         addChild(player)
 
-        // Gun (roda para apontar ao inimigo mais proximo)
+        // Gun — orbita o player; posição inicial à direita
         let gun = SKSpriteNode(imageNamed: "sGun")
         gun.texture?.filteringMode = .nearest
-        gun.size     = CGSize(width: 40, height: 20)
-        gun.position = CGPoint(x: 18, y: 0)
-        gun.zPosition = 1
-        gun.name     = "gun"
+        gun.size       = CGSize(width: 40, height: 20)
+        gun.position   = CGPoint(x: 22, y: 0)   // raio de orbita inicial
+        gun.zRotation  = 0
+        gun.zPosition  = 1
+        gun.name       = "gun"
         player.addChild(gun)
 
         playPlayerIdle()
@@ -311,7 +312,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         healthLabel.fontSize = 13
         healthLabel.fontColor = SKColor(red: 1, green: 0.45, blue: 0.45, alpha: 1)
         healthLabel.horizontalAlignmentMode = .left
-        healthLabel.position  = CGPoint(x: -barW / 2, y: hudY - 4)
+        healthLabel.position  = CGPoint(x: -barW / 2, y: hudY - 28)
         healthLabel.zPosition = 142
         gameCamera.addChild(healthLabel)
 
@@ -699,17 +700,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         spawnBullet(direction: dir)
         run(SKAction.playSoundFileNamed("aBullet.wav", waitForCompletion: false))
 
-        // Roda a arma para apontar ao inimigo
-        if let gun = player.childNode(withName: "gun") {
-            let worldAngle = atan2(dy, dx)
-            if player.xScale < 0 {
-                // Player esta virado para a esquerda; compensar o flip
-                gun.zRotation = .pi - worldAngle
-                gun.xScale    = -1
-            } else {
-                gun.zRotation = worldAngle
-                gun.xScale    = 1
-            }
+        // Arma orbita o player: posicao + rotacao calculadas a partir do angulo
+        if let gun = player.childNode(withName: "gun") as? SKSpriteNode {
+            let worldAngle   = atan2(dy, dx)
+            let orbitRadius: CGFloat = 22
+            gun.position  = CGPoint(x: cos(worldAngle) * orbitRadius,
+                                    y: sin(worldAngle) * orbitRadius)
+            gun.zRotation = worldAngle   // aponta na direcao do disparo
+            gun.xScale    = 1            // sem flip — a posicao trata da direcao
         }
     }
 
@@ -915,7 +913,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         overlay.name      = gameOverOverlayName
         overlay.zPosition = 300
 
-        let panel = SKShapeNode(rectOf: CGSize(width: 340, height: 230), cornerRadius: 16)
+        let panel = SKShapeNode(rectOf: CGSize(width: 340, height: 310), cornerRadius: 16)
         panel.fillColor  = SKColor(white: 0.08, alpha: 0.93)
         panel.strokeColor = .white
         panel.lineWidth  = 2
@@ -925,43 +923,72 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         title.text     = "GAME OVER"
         title.fontSize = 34
         title.fontColor = .white
-        title.position = CGPoint(x: 0, y: 70)
+        title.position = CGPoint(x: 0, y: 120)
         overlay.addChild(title)
 
         let timeLabel = SKLabelNode(fontNamed: "AvenirNext-Regular")
         timeLabel.text     = "Sobreviveu: \(formattedTime(currentRunSurvivalTime))  |  Recorde: \(formattedTime(bestSurvivalTime))"
         timeLabel.fontSize = 15
         timeLabel.fontColor = .lightGray
-        timeLabel.position = CGPoint(x: 0, y: 25)
+        timeLabel.position = CGPoint(x: 0, y: 76)
         overlay.addChild(timeLabel)
 
         let progressLabel = SKLabelNode(fontNamed: "AvenirNext-Regular")
         progressLabel.text     = "Data Bits: \(totalDataBitsBank)  |  Melhor nivel: \(highestLevelReached)"
         progressLabel.fontSize = 14
         progressLabel.fontColor = .systemTeal
-        progressLabel.position = CGPoint(x: 0, y: -5)
+        progressLabel.position = CGPoint(x: 0, y: 50)
         overlay.addChild(progressLabel)
 
         let hpLabel = SKLabelNode(fontNamed: "AvenirNext-Regular")
         hpLabel.text     = "♥ Max HP: \(playerMaxHealth)  |  Regen: \(Int(healthRegenPerSecond))/s"
         hpLabel.fontSize = 13
         hpLabel.fontColor = SKColor(red: 1, green: 0.5, blue: 0.5, alpha: 1)
-        hpLabel.position = CGPoint(x: 0, y: -33)
+        hpLabel.position = CGPoint(x: 0, y: 22)
         overlay.addChild(hpLabel)
 
         let magnetLabel = SKLabelNode(fontNamed: "AvenirNext-Regular")
         magnetLabel.text     = magnetActive ? "🧲 Iman ativo  |  Raio: \(Int(magnetRadius))px" : "🧲 Iman: nao recolhido"
         magnetLabel.fontSize = 13
         magnetLabel.fontColor = SKColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1.0)
-        magnetLabel.position = CGPoint(x: 0, y: -58)
+        magnetLabel.position = CGPoint(x: 0, y: -4)
         overlay.addChild(magnetLabel)
 
-        let tapLabel = SKLabelNode(fontNamed: "AvenirNext-Regular")
-        tapLabel.text     = "Toca para recomecar"
-        tapLabel.fontSize = 12
-        tapLabel.fontColor = SKColor(white: 0.4, alpha: 1)
-        tapLabel.position = CGPoint(x: 0, y: -92)
-        overlay.addChild(tapLabel)
+        // ── Botão Recomeçar ──
+        let restartBtn = SKShapeNode(rectOf: CGSize(width: 280, height: 48), cornerRadius: 12)
+        restartBtn.fillColor   = SKColor(red: 0.10, green: 0.45, blue: 0.10, alpha: 1.0)
+        restartBtn.strokeColor = SKColor(red: 0.30, green: 0.85, blue: 0.30, alpha: 1.0)
+        restartBtn.lineWidth   = 1.5
+        restartBtn.position    = CGPoint(x: 0, y: -60)
+        restartBtn.name        = "gameOverRestart"
+        overlay.addChild(restartBtn)
+
+        let restartLbl = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        restartLbl.text     = "▶  RECOMEÇAR"
+        restartLbl.fontSize = 19
+        restartLbl.fontColor = .white
+        restartLbl.verticalAlignmentMode   = .center
+        restartLbl.horizontalAlignmentMode = .center
+        restartLbl.isUserInteractionEnabled = false
+        restartBtn.addChild(restartLbl)
+
+        // ── Botão Menu Principal ──
+        let menuBtn = SKShapeNode(rectOf: CGSize(width: 280, height: 48), cornerRadius: 12)
+        menuBtn.fillColor   = SKColor(white: 0.15, alpha: 1.0)
+        menuBtn.strokeColor = SKColor(white: 0.45, alpha: 1.0)
+        menuBtn.lineWidth   = 1.5
+        menuBtn.position    = CGPoint(x: 0, y: -120)
+        menuBtn.name        = "gameOverMenu"
+        overlay.addChild(menuBtn)
+
+        let menuLbl = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        menuLbl.text     = "⌂  MENU PRINCIPAL"
+        menuLbl.fontSize = 19
+        menuLbl.fontColor = SKColor(red: 0.0, green: 0.95, blue: 0.75, alpha: 1.0)
+        menuLbl.verticalAlignmentMode   = .center
+        menuLbl.horizontalAlignmentMode = .center
+        menuLbl.isUserInteractionEnabled = false
+        menuBtn.addChild(menuLbl)
 
         gameCamera.addChild(overlay)
     }
@@ -1058,7 +1085,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        if gameState == .gameOver { restartRun(); return }
+        if gameState == .gameOver {
+            let name = firstMatchingNodeName(in: tapped, where: {
+                $0 == "gameOverRestart" || $0 == "gameOverMenu"
+            })
+            if name == "gameOverMenu" {
+                let menu = MainMenuScene(size: size)
+                menu.scaleMode = scaleMode
+                view?.presentScene(menu, transition: SKTransition.fade(
+                    with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1), duration: 0.4))
+            } else {
+                // toca no botão Recomeçar OU em qualquer outro sítio
+                restartRun()
+            }
+            return
+        }
 
         if gameState == .perkSelection {
             if let name = firstMatchingNodeName(in: tapped, where: { $0.hasPrefix("perkOption_") }),
