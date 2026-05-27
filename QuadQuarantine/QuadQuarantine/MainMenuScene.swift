@@ -25,6 +25,7 @@ class MainMenuScene: SKScene {
         addStatsPanel()
         addPlayButton()
         addStatsButton()
+        addShopButton()
         addVersionLabel()
         animateScene()
     }
@@ -307,6 +308,56 @@ class MainMenuScene: SKScene {
         btn.addChild(lbl)
     }
 
+    // MARK: - Shop Button
+
+    private func addShopButton() {
+        // Centrado verticalmente entre o Play (-24%) e o Stats (-38%),
+        // e à direita do botão Play (borda direita ~103px + margem)
+        let btnX: CGFloat =  170
+        let btnY: CGFloat = -size.height * 0.31
+
+        // Anel de glow (igual ao playRing mas mais pequeno)
+        let ring = SKShapeNode(rectOf: CGSize(width: 76, height: 76), cornerRadius: 38)
+        ring.fillColor   = .clear
+        ring.strokeColor = SKColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 0.22)
+        ring.lineWidth   = 6
+        ring.position    = CGPoint(x: btnX, y: btnY)
+        ring.zPosition   = 8
+        ring.name        = "shopRing"
+        addChild(ring)
+
+        // Corpo do botão
+        let btn = SKShapeNode(rectOf: CGSize(width: 64, height: 64), cornerRadius: 20)
+        btn.fillColor   = SKColor(red: 0.55, green: 0.38, blue: 0.0, alpha: 0.90)
+        btn.strokeColor = SKColor(red: 1.0,  green: 0.82, blue: 0.0, alpha: 0.85)
+        btn.lineWidth   = 2
+        btn.position    = CGPoint(x: btnX, y: btnY)
+        btn.zPosition   = 9
+        btn.name        = "shopButton"
+        addChild(btn)
+
+        // Ícone do carrinho de compras
+        let icon = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        icon.text     = "\u{1F6D2}"   // 🛒
+        icon.fontSize = 30
+        icon.verticalAlignmentMode   = .center
+        icon.horizontalAlignmentMode = .center
+        icon.isUserInteractionEnabled = false
+        btn.addChild(icon)
+
+        // Pulso no anel (igual ao playRing)
+        let scaleUp   = SKAction.scale(to: 1.08, duration: 0.9)
+        let scaleDown = SKAction.scale(to: 1.00, duration: 0.9)
+        scaleUp.timingMode   = .easeInEaseOut
+        scaleDown.timingMode = .easeInEaseOut
+        let fadeUp   = SKAction.fadeAlpha(to: 0.50, duration: 0.9)
+        let fadeDown = SKAction.fadeAlpha(to: 0.22, duration: 0.9)
+        ring.run(SKAction.repeatForever(SKAction.sequence([
+            SKAction.group([scaleUp, fadeUp]),
+            SKAction.group([scaleDown, fadeDown])
+        ])))
+    }
+
     // MARK: - Version Label
 
     private func addVersionLabel() {
@@ -354,6 +405,18 @@ class MainMenuScene: SKScene {
 
         let hitPlay  = tapped.contains(where: { $0.name == "playButton" || $0.name == "playRing" })
         let hitStats = tapped.contains(where: { $0.name == "statsButton" })
+
+        let hitShop = tapped.contains(where: { $0.name == "shopButton" || $0.name == "shopRing" })
+
+        if hitShop {
+            let scene = ShopScene(size: size)
+            scene.scaleMode = scaleMode
+            view?.presentScene(scene, transition: SKTransition.fade(
+                with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1.0),
+                duration: 0.35
+            ))
+            return
+        }
 
         if hitStats {
             let scene = PlayerStatsScene(size: size)

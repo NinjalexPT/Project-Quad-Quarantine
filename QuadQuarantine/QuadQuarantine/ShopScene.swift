@@ -294,12 +294,13 @@ class ShopScene: SKScene {
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let t = touches.first else { return }
-        let dy = t.location(in: self).y - touchStartY
+        // dy invertido: arrastar para cima (finger sobe) revela itens abaixo
+        let dy = touchStartY - t.location(in: self).y
         if abs(dy) > 6 { isDragging = true }
         if isDragging {
             let newY = touchScrollStart + dy
-            scrollContainer.position.y = max(-scrollMin, min(0, newY))
-            scrollVelocity = t.location(in: self).y - t.previousLocation(in: self).y
+            scrollContainer.position.y = max(0, min(scrollMin, newY))
+            scrollVelocity = t.previousLocation(in: self).y - t.location(in: self).y
         }
     }
 
@@ -316,7 +317,7 @@ class ShopScene: SKScene {
     override func update(_ currentTime: TimeInterval) {
         guard !isDragging, abs(scrollVelocity) > 0.5 else { return }
         scrollContainer.position.y += scrollVelocity
-        scrollContainer.position.y  = max(-scrollMin, min(0, scrollContainer.position.y))
+        scrollContainer.position.y  = max(0, min(scrollMin, scrollContainer.position.y))
         scrollVelocity *= 0.90
     }
 
