@@ -294,13 +294,13 @@ class ShopScene: SKScene {
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let t = touches.first else { return }
-        // dy invertido: arrastar para cima (finger sobe) revela itens abaixo
-        let dy = touchStartY - t.location(in: self).y
+        // deslizar para cima → itens sobem → ver itens abaixo (comportamento iOS padrão)
+        let dy = t.location(in: self).y - touchStartY
         if abs(dy) > 6 { isDragging = true }
         if isDragging {
             let newY = touchScrollStart + dy
             scrollContainer.position.y = max(0, min(scrollMin, newY))
-            scrollVelocity = t.previousLocation(in: self).y - t.location(in: self).y
+            scrollVelocity = t.location(in: self).y - t.previousLocation(in: self).y
         }
     }
 
