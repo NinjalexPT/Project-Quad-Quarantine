@@ -29,6 +29,7 @@ class MainMenuScene: SKScene {
         addStatsButton()
         addShopButton()
         addVersionLabel()
+        addSoundButton()
         animateScene()
     }
 
@@ -361,36 +362,36 @@ class MainMenuScene: SKScene {
         ])))
     }
 
-    // MARK: - Version Label
+    // MARK: - Sound Button
 
-    private func addShopButton() {
-        let btnW: CGFloat = 160; let btnH: CGFloat = 48
-        let btn = SKShapeNode(rectOf: CGSize(width: btnW, height: btnH), cornerRadius: 14)
-        btn.fillColor   = SKColor(red: 0.65, green: 0.42, blue: 0.0, alpha: 0.85)
-        btn.strokeColor = SKColor(red: 1.0,  green: 0.82, blue: 0.0, alpha: 0.9)
-        btn.lineWidth   = 2
-        btn.position    = CGPoint(x: size.width * 0.30, y: size.height * -0.12)
-        btn.zPosition   = 10
-        btn.name        = "shopButton"
+    private func addSoundButton() {
+        let muted = SoundManager.shared.isMuted
+        let btn = SKShapeNode(rectOf: CGSize(width: 44, height: 44), cornerRadius: 10)
+        btn.fillColor   = SKColor(white: 0.08, alpha: 0.90)
+        btn.strokeColor = SKColor(white: 0.22, alpha: 1.0)
+        btn.lineWidth   = 1.5
+        btn.position    = CGPoint(x: size.width / 2 - 36, y: size.height / 2 - 36)
+        btn.zPosition   = 20
+        btn.name        = "soundButton"
         addChild(btn)
-        let lbl = SKLabelNode(fontNamed: "AvenirNext-Bold")
-        lbl.text     = "SHOP"
-        lbl.fontSize = 20
-        lbl.fontColor = .white
-        lbl.verticalAlignmentMode   = .center
-        lbl.horizontalAlignmentMode = .center
-        lbl.isUserInteractionEnabled = false
-        btn.addChild(lbl)
-        let bits = SKLabelNode(fontNamed: "AvenirNext-Regular")
-        bits.text     = "Bits: \(UpgradeManager.shared.bitsBank)"
-        bits.fontSize = 12
-        bits.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 0.9)
-        bits.verticalAlignmentMode   = .center
-        bits.horizontalAlignmentMode = .center
-        bits.position = CGPoint(x: 0, y: -16)
-        bits.isUserInteractionEnabled = false
-        btn.addChild(bits)
+
+        let icon = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        icon.text     = muted ? "\u{1F507}" : "\u{1F50A}"  // 🔇 / 🔊
+        icon.fontSize = 22
+        icon.verticalAlignmentMode   = .center
+        icon.horizontalAlignmentMode = .center
+        icon.isUserInteractionEnabled = false
+        icon.name = "soundIcon"
+        btn.addChild(icon)
     }
+
+    private func updateSoundButton() {
+        guard let btn = childNode(withName: "soundButton"),
+              let icon = btn.childNode(withName: "soundIcon") as? SKLabelNode else { return }
+        icon.text = SoundManager.shared.isMuted ? "\u{1F507}" : "\u{1F50A}"
+    }
+
+    // MARK: - Version Label
 
     private func addVersionLabel() {
         let ver = SKLabelNode(fontNamed: "AvenirNext-Regular")
@@ -432,27 +433,19 @@ class MainMenuScene: SKScene {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        let loc   = touch.location(in: self)
-        let nodes = self.nodes(at: loc)
-        if nodes.contains(where: { $0.name == "shopButton" || $0.parent?.name == "shopButton" }) {
-            let shop = ShopScene(size: size); shop.scaleMode = scaleMode
-            view?.presentScene(shop, transition: SKTransition.fade(
-                with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1), duration: 0.3))
-            return
-        }
-        // original touch handling continues below
-        _ = (touch, nodes) // suppress unused warnings
-    }
-
-    private func _originalTouchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         let tapped = nodes(at: location)
 
+        // Sound toggle
+        if tapped.contains(where: { $0.name == "soundButton" || $0.parent?.name == "soundButton" }) {
+            SoundManager.shared.isMuted.toggle()
+            updateSoundButton()
+            return
+        }
+
         let hitPlay  = tapped.contains(where: { $0.name == "playButton" || $0.name == "playRing" })
         let hitStats = tapped.contains(where: { $0.name == "statsButton" })
-
-        let hitShop = tapped.contains(where: { $0.name == "shopButton" || $0.name == "shopRing" })
+        let hitShop  = tapped.contains(where: { $0.name == "shopButton" || $0.name == "shopRing" || $0.parent?.name == "shopButton" })
 
         if hitShop {
             let scene = ShopScene(size: size)

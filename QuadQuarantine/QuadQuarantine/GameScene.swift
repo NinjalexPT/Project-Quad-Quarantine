@@ -94,8 +94,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var runStartTime:                TimeInterval?
     private var currentRunBitsCollected: Int    = 0
     private let baseScrapBitDropChance:  Double = 0.25
-    private var currentRunBitsCollected: Int    = 0
-    private let baseScrapBitDropChance:  Double = 0.25
 
     // MARK: - HUD Nodes
     private var xpBarFillNode: SKShapeNode!
@@ -714,7 +712,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let dir = CGVector(dx: dx / dist, dy: dy / dist)
         spawnBullet(direction: dir)
-        run(SKAction.playSoundFileNamed("aBullet.wav", waitForCompletion: false))
+        SoundManager.shared.playEffect(named: "aBullet.wav", on: self)
 
         // Arma orbita o player: posicao + rotacao calculadas a partir do angulo
         if let gun = player.childNode(withName: "gun") as? SKSpriteNode {
@@ -867,7 +865,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             } else {
                 if let pos = enemyPos {
                     showEnemyDeath(at: pos)
-                    run(SKAction.playSoundFileNamed("aDeath.wav", waitForCompletion: false))
+                    SoundManager.shared.playEffect(named: "aDeath.wav", on: self)
                     spawnDataBit(at: pos)
                     tryDropScrapBit(at: pos)
                 }
@@ -1075,6 +1073,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             btn.addChild(lbl)
         }
 
+        // Sound toggle button
+        let soundBtn = SKShapeNode(rectOf: CGSize(width: 44, height: 44), cornerRadius: 10)
+        soundBtn.fillColor   = SKColor(white: 0.15, alpha: 0.9)
+        soundBtn.strokeColor = SKColor(white: 0.35, alpha: 1.0)
+        soundBtn.lineWidth   = 1.5
+        soundBtn.position    = CGPoint(x: size.width / 2 - 36, y: size.height / 2 - 36)
+        soundBtn.zPosition   = 330
+        soundBtn.name        = "pauseSoundButton"
+        let soundIcon = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        soundIcon.text     = SoundManager.shared.isMuted ? "\u{1F507}" : "\u{1F50A}"
+        soundIcon.fontSize = 22
+        soundIcon.verticalAlignmentMode   = .center
+        soundIcon.horizontalAlignmentMode = .center
+        soundIcon.isUserInteractionEnabled = false
+        soundIcon.name = "pauseSoundIcon"
+        soundBtn.addChild(soundIcon)
+        overlay.addChild(soundBtn)
+
         gameCamera.addChild(overlay)
     }
 
@@ -1102,6 +1118,16 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let tapped = cameraNodes(at: touch)
 
         if gameState == .paused {
+            if firstMatchingNodeName(in: tapped, where: { $0 == "pauseSoundButton" || $0 == "pauseSoundIcon" }) != nil {
+                SoundManager.shared.isMuted.toggle()
+                // Update icon
+                if let overlay = gameCamera.childNode(withName: "pauseOverlay"),
+                   let btn  = overlay.childNode(withName: "pauseSoundButton"),
+                   let icon = btn.childNode(withName: "pauseSoundIcon") as? SKLabelNode {
+                    icon.text = SoundManager.shared.isMuted ? "\u{1F507}" : "\u{1F50A}"
+                }
+                return
+            }
             if firstMatchingNodeName(in: tapped, where: { $0 == "resumeButton" }) != nil {
                 joystick.reset(animated: false); isPaused = false; removePauseMenu(); gameState = .running; return
             }
@@ -1164,10 +1190,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         highestLevelReached = max(highestLevelReached, currentLevel)
         bestMaxHealth       = max(bestMaxHealth, playerMaxHealth)
         bestHealthRegen     = max(bestHealthRegen, Int(healthRegenPerSecond))
-        if currentRunBitsCollected > 0 {
-            UpgradeManager.shared.bitsBank += currentRunBitsCollected
-            currentRunBitsCollected = 0
-        }
         if currentRunBitsCollected > 0 {
             UpgradeManager.shared.bitsBank += currentRunBitsCollected
             currentRunBitsCollected = 0
