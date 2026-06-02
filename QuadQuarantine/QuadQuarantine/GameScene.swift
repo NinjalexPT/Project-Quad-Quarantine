@@ -112,6 +112,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var currentRunSurvivalTime:      TimeInterval = 0
     private var currentRunDataBitsCollected: Int          = 0
     private var runStartTime:                TimeInterval?
+    private var pausedAt:                TimeInterval = 0
+    private var totalPausedTime:         TimeInterval = 0
     private var currentRunBitsCollected: Int    = 0
     private let baseScrapBitDropChance:  Double = 0.25
 
@@ -159,6 +161,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         startEnemySpawner()
         startAutoFire()
         refreshBestTimeUI()
+        SoundManager.shared.playMusic(named: "BONUS - Experiment (Looped version).wav")
     }
 
     // MARK: - Background
@@ -353,7 +356,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         pauseButton.fillColor  = SKColor(white: 0.15, alpha: 0.85)
         pauseButton.strokeColor = SKColor(white: 0.9, alpha: 1.0)
         pauseButton.lineWidth  = 2
-        pauseButton.position   = CGPoint(x: size.width / 2 - 38, y: hudY + 38)
+        pauseButton.position    = CGPoint(x: size.width / 2 - 36, y: size.height / 2 - 50)
         pauseButton.zPosition  = 150
         pauseButton.name       = "pauseButton"
         let pauseSymbol = SKLabelNode(fontNamed: "AvenirNext-Bold")
@@ -453,18 +456,49 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         enemy.physicsBody?.contactTestBitMask = PhysicsCategory.player | PhysicsCategory.bullet
         enemy.physicsBody?.usesPreciseCollisionDetection = true
 
-        // Spawn fora do ecrã
+        // Spawn fora do campo de visão mas dentro dos limites do mapa
         let margin: CGFloat = 80
         let camX = gameCamera.position.x
         let camY = gameCamera.position.y
         let hw = size.width  / 2
         let hh = size.height / 2
-        switch Int.random(in: 0...3) {
-        case 0: enemy.position = CGPoint(x: CGFloat.random(in: camX-hw...camX+hw), y: camY+hh+margin)
-        case 1: enemy.position = CGPoint(x: CGFloat.random(in: camX-hw...camX+hw), y: camY-hh-margin)
-        case 2: enemy.position = CGPoint(x: camX-hw-margin, y: CGFloat.random(in: camY-hh...camY+hh))
-        default: enemy.position = CGPoint(x: camX+hw+margin, y: CGFloat.random(in: camY-hh...camY+hh))
-        }
+
+        // Bordas do ecrã (onde o inimigo aparece)
+        let spawnEdges: [(CGPoint)] = {
+            var candidates: [CGPoint] = []
+            // Topo
+            let topY = min(camY + hh + margin, mapHalfHeight - 20)
+            if topY > -mapHalfHeight {
+                let xMin = max(camX - hw, -mapHalfWidth + 20)
+                let xMax = min(camX + hw,  mapHalfWidth - 20)
+                if xMin < xMax { candidates.append(CGPoint(x: CGFloat.random(in: xMin...xMax), y: topY)) }
+            }
+            // Baixo
+            let botY = max(camY - hh - margin, -mapHalfHeight + 20)
+            if botY < mapHalfHeight {
+                let xMin = max(camX - hw, -mapHalfWidth + 20)
+                let xMax = min(camX + hw,  mapHalfWidth - 20)
+                if xMin < xMax { candidates.append(CGPoint(x: CGFloat.random(in: xMin...xMax), y: botY)) }
+            }
+            // Esquerda
+            let leftX = max(camX - hw - margin, -mapHalfWidth + 20)
+            if leftX < mapHalfWidth {
+                let yMin = max(camY - hh, -mapHalfHeight + 20)
+                let yMax = min(camY + hh,  mapHalfHeight - 20)
+                if yMin < yMax { candidates.append(CGPoint(x: leftX, y: CGFloat.random(in: yMin...yMax))) }
+            }
+            // Direita
+            let rightX = min(camX + hw + margin, mapHalfWidth - 20)
+            if rightX > -mapHalfWidth {
+                let yMin = max(camY - hh, -mapHalfHeight + 20)
+                let yMax = min(camY + hh,  mapHalfHeight - 20)
+                if yMin < yMax { candidates.append(CGPoint(x: rightX, y: CGFloat.random(in: yMin...yMax))) }
+            }
+            return candidates
+        }()
+
+        guard !spawnEdges.isEmpty else { return }
+        enemy.position = spawnEdges[Int.random(in: 0..<spawnEdges.count)]
         addChild(enemy)
     }
 
@@ -832,7 +866,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         guard gameState == .running else { return }
 
         if runStartTime == nil { runStartTime = currentTime }
-        if let t = runStartTime { currentRunSurvivalTime = max(0, currentTime - t) }
+        if let t = runStartTime { currentRunSurvivalTime = max(0, currentTime - t - totalPausedTime) }
 
         // Dificuldade
         updateDifficulty()
@@ -1068,6 +1102,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         guard gameState == .running else { return }
         gameState = .gameOver
         finalizeRunProgress()
+        SoundManager.shared.stopMusic()
         removeAction(forKey: "enemySpawner")
         removeAction(forKey: autoFireActionKey)
         joystick.removeFromParent()
@@ -1224,7 +1259,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         soundBtn.fillColor   = SKColor(white: 0.15, alpha: 0.9)
         soundBtn.strokeColor = SKColor(white: 0.35, alpha: 1.0)
         soundBtn.lineWidth   = 1.5
-        soundBtn.position    = CGPoint(x: size.width / 2 - 36, y: size.height / 2 - 36)
+        soundBtn.position    = CGPoint(x: size.width / 2 - 36, y: size.height / 2 - 50)
         soundBtn.zPosition   = 330
         soundBtn.name        = "pauseSoundButton"
         let soundIcon = SKLabelNode(fontNamed: "AvenirNext-Regular")
@@ -1292,7 +1327,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 return
             }
             if firstMatchingNodeName(in: tapped, where: { $0 == "resumeButton" }) != nil {
-                joystick.reset(animated: false); isPaused = false; removePauseMenu(); gameState = .running; return
+                joystick.reset(animated: false)
+                if pausedAt > 0 { totalPausedTime += CACurrentMediaTime() - pausedAt; pausedAt = 0 }
+                isPaused = false
+                removePauseMenu()
+                gameState = .running
+                startEnemySpawner()
+                return
             }
             if firstMatchingNodeName(in: tapped, where: { $0 == "exitButton" }) != nil {
                 isPaused = false; removePauseMenu()
@@ -1330,7 +1371,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         if firstMatchingNodeName(in: tapped, where: { $0 == "pauseButton" }) != nil {
-            joystick.reset(animated: false); gameState = .paused; isPaused = true; showPauseMenu(); return
+            joystick.reset(animated: false)
+            gameState = .paused
+            isPaused = true
+            pausedAt = CACurrentMediaTime()
+            removeAction(forKey: "enemySpawner")
+            showPauseMenu()
+            return
         }
 
         super.touchesBegan(touches, with: event)

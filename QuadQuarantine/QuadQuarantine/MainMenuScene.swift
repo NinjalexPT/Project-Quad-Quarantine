@@ -32,6 +32,7 @@ class MainMenuScene: SKScene {
         addVersionLabel()
         addSoundButton()
         animateScene()
+        SoundManager.shared.playMusic(named: "BONUS - Experiment (Looped version).wav")
     }
 
     // MARK: - Background
@@ -371,7 +372,7 @@ class MainMenuScene: SKScene {
         btn.fillColor   = SKColor(white: 0.08, alpha: 0.90)
         btn.strokeColor = SKColor(white: 0.22, alpha: 1.0)
         btn.lineWidth   = 1.5
-        btn.position    = CGPoint(x: size.width / 2 - 36, y: size.height / 2 - 36)
+        btn.position    = CGPoint(x: size.width / 2 - 590, y: size.height / 2 - 325)
         btn.zPosition   = 20
         btn.name        = "soundButton"
         addChild(btn)
@@ -475,6 +476,7 @@ class MainMenuScene: SKScene {
         if hitShop {
             let scene = ShopScene(size: size)
             scene.scaleMode = scaleMode
+            SoundManager.shared.stopMusic()
             view?.presentScene(scene, transition: SKTransition.fade(
                 with: SKColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1.0),
                 duration: 0.35
@@ -509,6 +511,7 @@ class MainMenuScene: SKScene {
     // MARK: - Transition
 
     private func transitionToGame() {
+        SoundManager.shared.stopMusic()
         let scene: GameScene
         if let loaded = GameScene(fileNamed: "GameScene") {
             scene = loaded

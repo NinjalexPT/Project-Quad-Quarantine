@@ -62,7 +62,14 @@ final class SoundManager {
 
     func playMusic(named fileName: String, loop: Bool = true) {
         guard !isMuted else { return }
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: nil) else { return }
+        // Split filename from extension to support names with spaces/parentheses
+        let nsName = fileName as NSString
+        let ext    = nsName.pathExtension
+        let base   = nsName.deletingPathExtension
+        guard let url = Bundle.main.url(forResource: base, withExtension: ext.isEmpty ? nil : ext) else {
+            print("SoundManager: ficheiro não encontrado no bundle — \(fileName)")
+            return
+        }
         do {
             musicPlayer = try AVAudioPlayer(contentsOf: url)
             musicPlayer?.numberOfLoops = loop ? -1 : 0
