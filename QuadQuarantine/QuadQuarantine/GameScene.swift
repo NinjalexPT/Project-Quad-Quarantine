@@ -41,11 +41,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var joystick: Joystick!
     let gameCamera = SKCameraNode()
 
+    // MARK: - Map Boundaries
+    private let mapHalfWidth:  CGFloat = 1792   // 28 * 128 / 2
+    private let mapHalfHeight: CGFloat = 1792
+
     // MARK: - Game State
     var gameState: GameState = .running
     private let gameOverOverlayName = "gameOverOverlay"
     private let perkOverlayName     = "perkOverlay"
+    private let soundMenuName       = "soundMenu"
     private let autoFireActionKey   = "autoFireAction"
+
+    // MARK: - Sound Slider State
+    private var activeSliderId: String? = nil   // "musicSlider" | "effectsSlider"
 
     // MARK: - Player Combat Stats
     private var playerMoveSpeed:    CGFloat      = 5.0
@@ -232,7 +240,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let gun = SKSpriteNode(imageNamed: "sGun")
         gun.texture?.filteringMode = .nearest
         gun.size       = CGSize(width: 40, height: 20)
-        gun.position   = CGPoint(x: 22, y: 0)   // raio de orbita inicial
+        gun.position   = CGPoint(x: 34, y: 0)   // raio de orbita inicial
         gun.zRotation  = 0
         gun.zPosition  = 1
         gun.name       = "gun"
@@ -717,7 +725,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Arma orbita o player: posicao + rotacao calculadas a partir do angulo
         if let gun = player.childNode(withName: "gun") as? SKSpriteNode {
             let worldAngle   = atan2(dy, dx)
-            let orbitRadius: CGFloat = 22
+            let orbitRadius: CGFloat = 34
             gun.position  = CGPoint(x: cos(worldAngle) * orbitRadius,
                                     y: sin(worldAngle) * orbitRadius)
             gun.zRotation = worldAngle   // aponta na direcao do disparo
@@ -788,8 +796,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Camera segue o player
-        gameCamera.position = player.position
+        // Camera segue o player com clamping aos limites do mapa
+        let camHalfW = size.width  / 2
+        let camHalfH = size.height / 2
+        let clampedX = max(-mapHalfWidth  + camHalfW, min(mapHalfWidth  - camHalfW, player.position.x))
+        let clampedY = max(-mapHalfHeight + camHalfH, min(mapHalfHeight - camHalfH, player.position.y))
+        gameCamera.position = CGPoint(x: clampedX, y: clampedY)
 
         // Animacao do player
         let moving = joystick.velocity != .zero
@@ -808,6 +820,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             if      joystick.velocity.x < -0.1 { player.xScale = -1 }
             else if joystick.velocity.x >  0.1 { player.xScale =  1 }
         }
+
+        // Clamp player within map bounds
+        let playerHalf: CGFloat = 20
+        player.position.x = max(-mapHalfWidth  + playerHalf, min(mapHalfWidth  - playerHalf, player.position.x))
+        player.position.y = max(-mapHalfHeight + playerHalf, min(mapHalfHeight - playerHalf, player.position.y))
 
         // Inimigos movem-se em direcao ao player
         let eSpeed = currentEnemySpeed()
@@ -1119,13 +1136,30 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
         if gameState == .paused {
             if firstMatchingNodeName(in: tapped, where: { $0 == "pauseSoundButton" || $0 == "pauseSoundIcon" }) != nil {
-                SoundManager.shared.isMuted.toggle()
-                // Update icon
-                if let overlay = gameCamera.childNode(withName: "pauseOverlay"),
-                   let btn  = overlay.childNode(withName: "pauseSoundButton"),
-                   let icon = btn.childNode(withName: "pauseSoundIcon") as? SKLabelNode {
-                    icon.text = SoundManager.shared.isMuted ? "\u{1F507}" : "\u{1F50A}"
+                if gameCamera.childNode(withName: soundMenuName) != nil {
+                    hideSoundMenu()
+                } else {
+                    showSoundMenu()
                 }
+                return
+            }
+            // Sound menu interactions while paused
+            if let name = firstMatchingNodeName(in: tapped, where: {
+                $0 == "soundMenuClose" || $0 == "soundMenuMute" || $0 == "soundMenuBg" || $0 == "soundMenuBack"
+            }) {
+                if name == "soundMenuClose" || name == "soundMenuBg" || name == "soundMenuBack" {
+                    hideSoundMenu(reopenPause: true)
+                } else if name == "soundMenuMute" {
+                    SoundManager.shared.isMuted.toggle()
+                    hideSoundMenu(reopenPause: false)
+                    showSoundMenu()
+                }
+                return
+            }
+            if let name = firstMatchingNodeName(in: tapped, where: { $0 == "musicSlider" || $0 == "effectsSlider" }) {
+                activeSliderId = name
+                let x = touch.location(in: gameCamera).x
+                updateSlider(id: name, touchX: x)
                 return
             }
             if firstMatchingNodeName(in: tapped, where: { $0 == "resumeButton" }) != nil {
@@ -1171,6 +1205,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         super.touchesBegan(touches, with: event)
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first, let id = activeSliderId else { return }
+        let x = touch.location(in: gameCamera).x
+        updateSlider(id: id, touchX: x)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        activeSliderId = nil
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        activeSliderId = nil
     }
 
     // MARK: - Persistence
@@ -1304,5 +1352,205 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             lbl.text = "Bits: \(currentRunBitsCollected)"
         }
     }
+
+
+    // MARK: - Sound Menu
+    func showSoundMenu() {
+        gameCamera.childNode(withName: soundMenuName)?.removeFromParent()
+
+        // Esconde o menu de pausa (volta quando fechar o som)
+        gameCamera.childNode(withName: "pauseOverlay")?.isHidden = true
+
+        let overlay = SKNode()
+        overlay.name      = soundMenuName
+        overlay.zPosition = 350
+
+        // Dim de fundo
+        let dim = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
+        dim.fillColor   = SKColor(white: 0.0, alpha: 0.65)
+        dim.strokeColor = .clear
+        overlay.addChild(dim)
+
+        // Painel central
+        let panelW: CGFloat = 320
+        let panelH: CGFloat = 340
+        let panel = SKShapeNode(rectOf: CGSize(width: panelW, height: panelH), cornerRadius: 20)
+        panel.fillColor   = SKColor(white: 0.09, alpha: 0.97)
+        panel.strokeColor = SKColor(white: 0.80, alpha: 1.0)
+        panel.lineWidth   = 2
+        panel.name        = "soundMenuPanel"
+        overlay.addChild(panel)
+
+        // Título
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.text      = "🔊  Sound"
+        title.fontSize  = 22
+        title.fontColor = .white
+        title.position  = CGPoint(x: 0, y: 156)
+        panel.addChild(title)
+
+        // Linha separadora
+        let sep = SKShapeNode(rectOf: CGSize(width: panelW - 40, height: 1))
+        sep.fillColor   = SKColor(white: 0.30, alpha: 1.0)
+        sep.strokeColor = .clear
+        sep.position    = CGPoint(x: 0, y: 118)
+        panel.addChild(sep)
+
+        // Sliders
+        panel.addChild(buildSliderRow(
+            id: "musicSlider",
+            icon: "🎵",
+            label: "Music",
+            value: SoundManager.shared.musicVolume,
+            y: 72
+        ))
+        panel.addChild(buildSliderRow(
+            id: "effectsSlider",
+            icon: "💥",
+            label: "Effects",
+            value: SoundManager.shared.effectsVolume,
+            y: 0
+        ))
+
+        // Botão Mute All
+        let muteBtn = SKShapeNode(rectOf: CGSize(width: panelW - 60, height: 44), cornerRadius: 12)
+        muteBtn.fillColor   = SoundManager.shared.isMuted
+            ? SKColor(red: 0.55, green: 0.10, blue: 0.10, alpha: 1.0)
+            : SKColor(white: 0.18, alpha: 1.0)
+        muteBtn.strokeColor = SKColor(white: 0.45, alpha: 1.0)
+        muteBtn.lineWidth   = 1.5
+        muteBtn.position    = CGPoint(x: 0, y: -72)
+        muteBtn.name        = "soundMenuMute"
+        let muteLbl = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        muteLbl.text      = SoundManager.shared.isMuted ? "🔇  Unmute All" : "🔇  Mute All"
+        muteLbl.fontSize  = 16
+        muteLbl.fontColor = .white
+        muteLbl.verticalAlignmentMode   = .center
+        muteLbl.horizontalAlignmentMode = .center
+        muteLbl.isUserInteractionEnabled = false
+        muteBtn.addChild(muteLbl)
+        panel.addChild(muteBtn)
+
+        // Botão ← Back
+        let backBtn = SKShapeNode(rectOf: CGSize(width: panelW - 60, height: 44), cornerRadius: 12)
+        backBtn.fillColor   = SKColor(red: 0.06, green: 0.32, blue: 0.20, alpha: 1.0)
+        backBtn.strokeColor = SKColor(red: 0.10, green: 0.70, blue: 0.45, alpha: 1.0)
+        backBtn.lineWidth   = 1.5
+        backBtn.position    = CGPoint(x: 0, y: -136)
+        backBtn.name        = "soundMenuBack"
+        let backLbl = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        backLbl.text      = "← Back"
+        backLbl.fontSize  = 16
+        backLbl.fontColor = .white
+        backLbl.verticalAlignmentMode   = .center
+        backLbl.horizontalAlignmentMode = .center
+        backLbl.isUserInteractionEnabled = false
+        backBtn.addChild(backLbl)
+        panel.addChild(backBtn)
+
+        gameCamera.addChild(overlay)
+    }
+
+    private func buildSliderRow(id: String, icon: String, label: String, value: Float, y: CGFloat) -> SKNode {
+        let row = SKNode()
+        row.position = CGPoint(x: 0, y: y)
+
+        // Label
+        let lbl = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        lbl.text     = "\(icon) \(label)"
+        lbl.fontSize = 14
+        lbl.fontColor = SKColor(white: 0.8, alpha: 1.0)
+        lbl.horizontalAlignmentMode = .left
+        lbl.verticalAlignmentMode   = .center
+        lbl.position = CGPoint(x: -130, y: 0)
+        row.addChild(lbl)
+
+        // Track
+        let trackW: CGFloat = 160
+        let trackH: CGFloat = 6
+        let track = SKShapeNode(rectOf: CGSize(width: trackW, height: trackH), cornerRadius: 3)
+        track.fillColor   = SKColor(white: 0.3, alpha: 1.0)
+        track.strokeColor = .clear
+        track.position    = CGPoint(x: 20, y: 0)
+        track.name        = "\(id)Track"
+        row.addChild(track)
+
+        // Fill
+        let fillW = max(6, trackW * CGFloat(value))
+        let fill = SKShapeNode(rectOf: CGSize(width: fillW, height: trackH), cornerRadius: 3)
+        fill.fillColor   = SKColor(red: 0.20, green: 0.75, blue: 0.40, alpha: 1.0)
+        fill.strokeColor = .clear
+        fill.position    = CGPoint(x: 20 - trackW / 2 + fillW / 2, y: 0)
+        fill.name        = "\(id)Fill"
+        row.addChild(fill)
+
+        // Thumb
+        let thumb = SKShapeNode(circleOfRadius: 10)
+        thumb.fillColor   = .white
+        thumb.strokeColor = SKColor(white: 0.7, alpha: 1.0)
+        thumb.lineWidth   = 1.5
+        thumb.position    = CGPoint(x: 20 - trackW / 2 + trackW * CGFloat(value), y: 0)
+        thumb.name        = id
+        row.addChild(thumb)
+
+        // Valor %
+        let valLbl = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        valLbl.text     = "\(Int(value * 100))%"
+        valLbl.fontSize = 12
+        valLbl.fontColor = SKColor(white: 0.6, alpha: 1.0)
+        valLbl.horizontalAlignmentMode = .left
+        valLbl.verticalAlignmentMode   = .center
+        valLbl.position = CGPoint(x: 106, y: 0)
+        valLbl.name     = "\(id)ValLbl"
+        row.addChild(valLbl)
+
+        return row
+    }
+
+    func hideSoundMenu(reopenPause: Bool = true) {
+        gameCamera.childNode(withName: soundMenuName)?.removeFromParent()
+        activeSliderId = nil
+        // Restaura o menu de pausa se estava visível
+        if reopenPause {
+            gameCamera.childNode(withName: "pauseOverlay")?.isHidden = false
+        }
+    }
+
+    private func updateSlider(id: String, touchX: CGFloat) {
+        guard let menu = gameCamera.childNode(withName: soundMenuName) else { return }
+        // Find the row containing this slider
+        guard let thumb = menu.childNode(withName: "//\(id)") else { return }
+        guard let row   = thumb.parent else { return }
+
+        let trackW: CGFloat = 160
+        let trackOriginX: CGFloat = 20 - trackW / 2   // left edge of track in row coords
+        let localX = row.convert(CGPoint(x: touchX, y: 0), from: gameCamera).x
+        let t = max(0.0, min(1.0, (localX - trackOriginX) / trackW))
+
+        // Move thumb
+        thumb.position.x = trackOriginX + trackW * t
+
+        // Resize fill
+        if let fill = row.childNode(withName: "\(id)Fill") {
+            let fillW = max(6, trackW * t)
+            fill.removeFromParent()
+            let newFill = SKShapeNode(rectOf: CGSize(width: fillW, height: 6), cornerRadius: 3)
+            newFill.fillColor   = SKColor(red: 0.20, green: 0.75, blue: 0.40, alpha: 1.0)
+            newFill.strokeColor = .clear
+            newFill.position    = CGPoint(x: trackOriginX + fillW / 2, y: 0)
+            newFill.name        = "\(id)Fill"
+            row.addChild(newFill)
+        }
+
+        // Update label
+        if let valLbl = row.childNode(withName: "\(id)ValLbl") as? SKLabelNode {
+            valLbl.text = "\(Int(t * 100))%"
+        }
+
+        // Apply
+        if id == "musicSlider"   { SoundManager.shared.musicVolume   = Float(t) }
+        if id == "effectsSlider" { SoundManager.shared.effectsVolume = Float(t) }
+    }
+
 
 }

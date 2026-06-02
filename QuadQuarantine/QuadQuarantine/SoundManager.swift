@@ -14,30 +14,47 @@ final class SoundManager {
     private init() {}
 
     // MARK: - Persistence Keys
-    private let mutedKey  = "soundMuted"
-    private let volumeKey = "soundVolume"
+    private let mutedKey         = "soundMuted"
+    private let musicVolumeKey   = "musicVolume"
+    private let effectsVolumeKey = "effectsVolume"
 
-    // MARK: - Estado
+    // MARK: - Mute
     var isMuted: Bool {
         get { UserDefaults.standard.bool(forKey: mutedKey) }
         set {
             UserDefaults.standard.set(newValue, forKey: mutedKey)
             if newValue { musicPlayer?.pause() }
-            else        { musicPlayer?.play()  }
+            else        { musicPlayer?.volume = musicVolume; musicPlayer?.play() }
         }
     }
 
-    /// Volume geral: 0.0 – 1.0  (default 1.0)
-    var volume: Float {
+    // MARK: - Volume da Música: 0.0 – 1.0  (default 0.7)
+    var musicVolume: Float {
         get {
-            let v = UserDefaults.standard.float(forKey: volumeKey)
-            return v == 0 && !UserDefaults.standard.bool(forKey: "soundVolumeSet") ? 1.0 : v
+            let stored = UserDefaults.standard.object(forKey: musicVolumeKey)
+            return stored != nil ? UserDefaults.standard.float(forKey: musicVolumeKey) : 0.7
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: volumeKey)
-            UserDefaults.standard.set(true,     forKey: "soundVolumeSet")
+            UserDefaults.standard.set(newValue, forKey: musicVolumeKey)
             musicPlayer?.volume = newValue
         }
+    }
+
+    // MARK: - Volume dos Efeitos: 0.0 – 1.0  (default 0.8)
+    var effectsVolume: Float {
+        get {
+            let stored = UserDefaults.standard.object(forKey: effectsVolumeKey)
+            return stored != nil ? UserDefaults.standard.float(forKey: effectsVolumeKey) : 0.8
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: effectsVolumeKey)
+        }
+    }
+
+    // MARK: - Retrocompatibilidade
+    var volume: Float {
+        get { effectsVolume }
+        set { effectsVolume = newValue; musicVolume = newValue }
     }
 
     // MARK: - Música de fundo
@@ -49,7 +66,7 @@ final class SoundManager {
         do {
             musicPlayer = try AVAudioPlayer(contentsOf: url)
             musicPlayer?.numberOfLoops = loop ? -1 : 0
-            musicPlayer?.volume = volume
+            musicPlayer?.volume = musicVolume
             musicPlayer?.play()
         } catch { print("SoundManager: erro ao carregar música \(fileName) — \(error)") }
     }
@@ -59,22 +76,16 @@ final class SoundManager {
     // MARK: - Efeitos sonoros (SKAction, chamados dentro de um SKScene)
     func playEffect(named fileName: String, on node: SKNode) {
         guard !isMuted else { return }
-        // SKAction não tem controlo de volume nativo; para volumes < 1 usamos AVAudioPlayer pontual
-        if volume >= 0.99 {
-            node.run(SKAction.playSoundFileNamed(fileName, waitForCompletion: false))
-        } else {
-            guard let url = Bundle.main.url(forResource: fileName, withExtension: nil) else { return }
-            do {
-                let player = try AVAudioPlayer(contentsOf: url)
-                player.volume = volume
-                player.play()
-                // Mantemos referência temporária para o player não ser desalocado antes de terminar
-                temporaryPlayers.append(player)
-                DispatchQueue.main.asyncAfter(deadline: .now() + player.duration + 0.1) { [weak self] in
-                    self?.temporaryPlayers.removeAll { $0 === player }
-                }
-            } catch {}
-        }
+        guard let url = Bundle.main.url(forResource: fileName, withExtension: nil) else { return }
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.volume = effectsVolume
+            player.play()
+            temporaryPlayers.append(player)
+            DispatchQueue.main.asyncAfter(deadline: .now() + player.duration + 0.1) { [weak self] in
+                self?.temporaryPlayers.removeAll { $0 === player }
+            }
+        } catch {}
     }
 
     private var temporaryPlayers: [AVAudioPlayer] = []

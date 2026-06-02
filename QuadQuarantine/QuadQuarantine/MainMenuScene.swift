@@ -15,6 +15,7 @@ class MainMenuScene: SKScene {
     }
 
     // Bits bank lido directamente do UpgradeManager
+    private var activeSliderId: String? = nil
 
     // MARK: - Lifecycle
     override func didMove(to view: SKView) {
@@ -436,10 +437,34 @@ class MainMenuScene: SKScene {
         let location = touch.location(in: self)
         let tapped = nodes(at: location)
 
-        // Sound toggle
+        // Sound menu
         if tapped.contains(where: { $0.name == "soundButton" || $0.parent?.name == "soundButton" }) {
-            SoundManager.shared.isMuted.toggle()
-            updateSoundButton()
+            if childNode(withName: "soundMenuOverlay") != nil {
+                hideSoundMenu()
+            } else {
+                showSoundMenu()
+            }
+            return
+        }
+        // Sound menu interactions
+        if let hit = tapped.first(where: { n in
+            ["soundMenuBack","soundMenuMute","soundMenuClose"].contains(n.name) ||
+            ["soundMenuBack","soundMenuMute","soundMenuClose"].contains(n.parent?.name)
+        }) {
+            let name = hit.name ?? hit.parent?.name ?? ""
+            if name == "soundMenuBack" || name == "soundMenuClose" {
+                hideSoundMenu()
+            } else if name == "soundMenuMute" {
+                SoundManager.shared.isMuted.toggle()
+                hideSoundMenu()
+                showSoundMenu()
+            }
+            return
+        }
+        // Slider touch
+        if let hit = tapped.first(where: { ["musicSlider","effectsSlider"].contains($0.name) }) {
+            activeSliderId = hit.name
+            updateSlider(id: hit.name!, touchX: touch.location(in: self).x)
             return
         }
 
@@ -505,4 +530,175 @@ class MainMenuScene: SKScene {
         let seconds = total % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
+
+    // MARK: - Touch drag for sliders
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first, let id = activeSliderId else { return }
+        updateSlider(id: id, touchX: touch.location(in: self).x)
+    }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?)    { activeSliderId = nil }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { activeSliderId = nil }
+
+    // MARK: - Sound Menu
+    func showSoundMenu() {
+        childNode(withName: "soundMenuOverlay")?.removeFromParent()
+        let overlay = SKNode()
+        overlay.name      = "soundMenuOverlay"
+        overlay.zPosition = 100
+
+        let dim = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
+        dim.fillColor   = SKColor(white: 0.0, alpha: 0.65)
+        dim.strokeColor = .clear
+        overlay.addChild(dim)
+
+        let panelW: CGFloat = 320
+        let panelH: CGFloat = 340
+        let panel = SKShapeNode(rectOf: CGSize(width: panelW, height: panelH), cornerRadius: 20)
+        panel.fillColor   = SKColor(white: 0.09, alpha: 0.97)
+        panel.strokeColor = SKColor(white: 0.80, alpha: 1.0)
+        panel.lineWidth   = 2
+        panel.name        = "soundMenuPanel"
+        overlay.addChild(panel)
+
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.text      = "🔊  Sound"
+        title.fontSize  = 22
+        title.fontColor = .white
+        title.position  = CGPoint(x: 0, y: 132)
+        panel.addChild(title)
+
+        let sep = SKShapeNode(rectOf: CGSize(width: panelW - 40, height: 1))
+        sep.fillColor   = SKColor(white: 0.30, alpha: 1.0)
+        sep.strokeColor = .clear
+        sep.position    = CGPoint(x: 0, y: 118)
+        panel.addChild(sep)
+
+        panel.addChild(buildSliderRow(id: "musicSlider",   icon: "🎵", label: "Music",   value: SoundManager.shared.musicVolume,   y: 72))
+        panel.addChild(buildSliderRow(id: "effectsSlider", icon: "💥", label: "Effects", value: SoundManager.shared.effectsVolume, y: 0))
+
+        let muteBtn = SKShapeNode(rectOf: CGSize(width: panelW - 60, height: 44), cornerRadius: 12)
+        muteBtn.fillColor   = SoundManager.shared.isMuted
+            ? SKColor(red: 0.55, green: 0.10, blue: 0.10, alpha: 1.0)
+            : SKColor(white: 0.18, alpha: 1.0)
+        muteBtn.strokeColor = SKColor(white: 0.45, alpha: 1.0)
+        muteBtn.lineWidth   = 1.5
+        muteBtn.position    = CGPoint(x: 0, y: -72)
+        muteBtn.name        = "soundMenuMute"
+        let muteLbl = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        muteLbl.text      = SoundManager.shared.isMuted ? "🔇  Unmute All" : "🔇  Mute All"
+        muteLbl.fontSize  = 16
+        muteLbl.fontColor = .white
+        muteLbl.verticalAlignmentMode   = .center
+        muteLbl.horizontalAlignmentMode = .center
+        muteLbl.isUserInteractionEnabled = false
+        muteBtn.addChild(muteLbl)
+        panel.addChild(muteBtn)
+
+        let backBtn = SKShapeNode(rectOf: CGSize(width: panelW - 60, height: 44), cornerRadius: 12)
+        backBtn.fillColor   = SKColor(red: 0.06, green: 0.32, blue: 0.20, alpha: 1.0)
+        backBtn.strokeColor = SKColor(red: 0.10, green: 0.70, blue: 0.45, alpha: 1.0)
+        backBtn.lineWidth   = 1.5
+        backBtn.position    = CGPoint(x: 0, y: -136)
+        backBtn.name        = "soundMenuBack"
+        let backLbl = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        backLbl.text      = "← Back"
+        backLbl.fontSize  = 16
+        backLbl.fontColor = .white
+        backLbl.verticalAlignmentMode   = .center
+        backLbl.horizontalAlignmentMode = .center
+        backLbl.isUserInteractionEnabled = false
+        backBtn.addChild(backLbl)
+        panel.addChild(backBtn)
+
+        addChild(overlay)
+    }
+
+    func hideSoundMenu() {
+        childNode(withName: "soundMenuOverlay")?.removeFromParent()
+        activeSliderId = nil
+    }
+
+    private func buildSliderRow(id: String, icon: String, label: String, value: Float, y: CGFloat) -> SKNode {
+        let row = SKNode()
+        row.position = CGPoint(x: 0, y: y)
+
+        let lbl = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        lbl.text     = "\(icon) \(label)"
+        lbl.fontSize = 14
+        lbl.fontColor = SKColor(white: 0.8, alpha: 1.0)
+        lbl.horizontalAlignmentMode = .left
+        lbl.verticalAlignmentMode   = .center
+        lbl.position = CGPoint(x: -130, y: 0)
+        row.addChild(lbl)
+
+        let trackW: CGFloat = 160
+        let trackH: CGFloat = 6
+        let track = SKShapeNode(rectOf: CGSize(width: trackW, height: trackH), cornerRadius: 3)
+        track.fillColor   = SKColor(white: 0.3, alpha: 1.0)
+        track.strokeColor = .clear
+        track.position    = CGPoint(x: 20, y: 0)
+        track.name        = "\(id)Track"
+        row.addChild(track)
+
+        let fillW = max(6, trackW * CGFloat(value))
+        let fill  = SKShapeNode(rectOf: CGSize(width: fillW, height: trackH), cornerRadius: 3)
+        fill.fillColor   = SKColor(red: 0.20, green: 0.75, blue: 0.40, alpha: 1.0)
+        fill.strokeColor = .clear
+        fill.position    = CGPoint(x: 20 - trackW / 2 + fillW / 2, y: 0)
+        fill.name        = "\(id)Fill"
+        row.addChild(fill)
+
+        let thumb = SKShapeNode(circleOfRadius: 10)
+        thumb.fillColor   = .white
+        thumb.strokeColor = SKColor(white: 0.7, alpha: 1.0)
+        thumb.lineWidth   = 1.5
+        thumb.position    = CGPoint(x: 20 - trackW / 2 + trackW * CGFloat(value), y: 0)
+        thumb.name        = id
+        row.addChild(thumb)
+
+        let valLbl = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        valLbl.text     = "\(Int(value * 100))%"
+        valLbl.fontSize = 12
+        valLbl.fontColor = SKColor(white: 0.6, alpha: 1.0)
+        valLbl.horizontalAlignmentMode = .left
+        valLbl.verticalAlignmentMode   = .center
+        valLbl.position = CGPoint(x: 106, y: 0)
+        valLbl.name     = "\(id)ValLbl"
+        row.addChild(valLbl)
+
+        return row
+    }
+
+    private func updateSlider(id: String, touchX: CGFloat) {
+        guard let menu  = childNode(withName: "soundMenuOverlay"),
+              let panel = menu.childNode(withName: "soundMenuPanel"),
+              let thumb = panel.childNode(withName: "//\(id)") else { return }
+        guard let row = thumb.parent else { return }
+
+        let trackW: CGFloat  = 160
+        let trackOriginX: CGFloat = 20 - trackW / 2
+        let localX = row.convert(CGPoint(x: touchX, y: 0), from: self).x
+        let t = max(0.0, min(1.0, (localX - trackOriginX) / trackW))
+
+        thumb.position.x = trackOriginX + trackW * t
+
+        if let fill = row.childNode(withName: "\(id)Fill") {
+            fill.removeFromParent()
+            let fillW = max(6, trackW * t)
+            let newFill = SKShapeNode(rectOf: CGSize(width: fillW, height: 6), cornerRadius: 3)
+            newFill.fillColor   = SKColor(red: 0.20, green: 0.75, blue: 0.40, alpha: 1.0)
+            newFill.strokeColor = .clear
+            newFill.position    = CGPoint(x: trackOriginX + fillW / 2, y: 0)
+            newFill.name        = "\(id)Fill"
+            row.addChild(newFill)
+        }
+        if let valLbl = row.childNode(withName: "\(id)ValLbl") as? SKLabelNode {
+            valLbl.text = "\(Int(t * 100))%"
+        }
+
+        if id == "musicSlider"   { SoundManager.shared.musicVolume   = Float(t) }
+        if id == "effectsSlider" { SoundManager.shared.effectsVolume = Float(t) }
+    }
+
+
 }
