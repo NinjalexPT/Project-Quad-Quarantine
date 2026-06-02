@@ -185,13 +185,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        // Mapa central por cima do fundo
-        let mapNode = SKSpriteNode(imageNamed: "sMap")
-        mapNode.size = CGSize(width: 320, height: 320)
-        mapNode.texture?.filteringMode = .nearest
-        mapNode.position   = .zero
-        mapNode.zPosition  = -9
-        addChild(mapNode)
+        // sMap removido — fundo uniforme de tiles em todo o mapa
 
         // Arbustos placeholder
         spawnBushPlaceholders()
@@ -323,7 +317,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         levelLabel.fontSize = 16
         levelLabel.fontColor = .white
         levelLabel.horizontalAlignmentMode = .left
-        levelLabel.position  = CGPoint(x: -barW / 2, y: hudY + 18)
+        levelLabel.position  = CGPoint(x: -barW / 2, y: hudY + 38)
         levelLabel.zPosition = 142
         gameCamera.addChild(levelLabel)
 
@@ -347,7 +341,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         bestTimeLabel.fontSize = 14
         bestTimeLabel.fontColor = .systemYellow
         bestTimeLabel.horizontalAlignmentMode = .center
-        bestTimeLabel.position  = CGPoint(x: 0, y: hudY + 38)
+        bestTimeLabel.position  = CGPoint(x: 0, y: hudY + 18)
         bestTimeLabel.zPosition = 142
         gameCamera.addChild(bestTimeLabel)
 
@@ -374,7 +368,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         bitsHUD.fontSize = 14
         bitsHUD.fontColor = SKColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1.0)
         bitsHUD.horizontalAlignmentMode = .right
-        bitsHUD.position  = CGPoint(x: size.width / 2 - 48, y: hudY - 4)
+        bitsHUD.position  = CGPoint(x: barW / 2, y: hudY + 38)
         bitsHUD.zPosition = 142
         gameCamera.addChild(bitsHUD)
 
