@@ -4,13 +4,14 @@ import AVFoundation
 
 // MARK: - Physics Categories
 struct PhysicsCategory {
-    static let none:    UInt32 = 0
-    static let player:  UInt32 = 0b1
-    static let enemy:   UInt32 = 0b10
-    static let bullet:  UInt32 = 0b100
-    static let dataBit: UInt32 = 0b1000
-    static let powerUp:  UInt32 = 0b10000
-    static let scrapBit: UInt32 = 0b100000
+    static let none:        UInt32 = 0
+    static let player:      UInt32 = 0b1
+    static let enemy:       UInt32 = 0b10
+    static let bullet:      UInt32 = 0b100
+    static let dataBit:     UInt32 = 0b1000
+    static let powerUp:     UInt32 = 0b10000
+    static let scrapBit:    UInt32 = 0b100000
+    static let enemyBullet: UInt32 = 0b1000000
 }
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
@@ -40,6 +41,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var player: SKSpriteNode!
     var joystick: Joystick!
     let gameCamera = SKCameraNode()
+
+    // MARK: - Enemy Types
+    enum EnemyType: String {
+        case normal  = "enemy"
+        case tank    = "enemyTank"
+        case ranged  = "enemyRanged"
+    }
 
     // MARK: - Map Boundaries
     private let mapHalfWidth:  CGFloat = 1792   // 28 * 128 / 2
@@ -90,6 +98,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Difficulty
     private var currentSpawnInterval: TimeInterval = 1.5
     private var difficultyTier:       Int          = 0
+    private var lastRangedFireTime:   [ObjectIdentifier: TimeInterval] = [:]
+    private let rangedFireInterval:   TimeInterval = 2.8
+    private let rangedFireRange:      CGFloat      = 420
+    private let rangedStopDistance:   CGFloat      = 320
 
     // MARK: - Persistence / Run tracking
     private var bestSurvivalTime:            TimeInterval = 0
@@ -232,7 +244,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         player.physicsBody?.categoryBitMask    = PhysicsCategory.player
         player.physicsBody?.collisionBitMask   = PhysicsCategory.none
         player.physicsBody?.contactTestBitMask =
-            PhysicsCategory.enemy | PhysicsCategory.dataBit | PhysicsCategory.powerUp | PhysicsCategory.scrapBit | PhysicsCategory.scrapBit
+            PhysicsCategory.enemy | PhysicsCategory.dataBit | PhysicsCategory.powerUp | PhysicsCategory.scrapBit | PhysicsCategory.enemyBullet
         player.physicsBody?.usesPreciseCollisionDetection = true
         addChild(player)
 
@@ -377,11 +389,61 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     func spawnEnemy() {
-        let enemyFrames = GameScene.makeFrames(from: "sEnemy_strip7", frameCount: 7)
-        let enemy = SKSpriteNode(texture: enemyFrames[0])
-        enemy.size     = CGSize(width: 40, height: 40)
-        enemy.name     = "enemy"
+        // Decide tipo baseado no tier: normal sempre disponível, tank a partir tier 1, ranged a partir tier 2
+        let roll = Double.random(in: 0..<1)
+        let type: EnemyType
+        if difficultyTier >= 5 && roll < 0.20 {
+            type = .ranged
+        } else if difficultyTier >= 3 && roll < 0.35 {
+            type = .tank
+        } else {
+            type = .normal
+        }
+        spawnEnemyOfType(type)
+    }
+
+    private func spawnEnemyOfType(_ type: EnemyType) {
+        let enemy = SKSpriteNode()
+        enemy.name      = type.rawValue
         enemy.zPosition = 9
+        enemy.userData  = NSMutableDictionary()
+
+        switch type {
+        case .normal:
+            let frames = GameScene.makeFrames(from: "sEnemy_strip7", frameCount: 7)
+            enemy.texture = frames[0]
+            enemy.size    = CGSize(width: 40, height: 40)
+            let anim = SKAction.animate(with: frames, timePerFrame: 0.10)
+            enemy.run(SKAction.repeatForever(anim), withKey: "walkAnim")
+            let hp = max(1, Int(pow(1.6, Double(difficultyTier))))
+            enemy.userData?["health"] = hp
+
+        case .tank:
+            // Grande, lento, muito mais vida — usa o mesmo sprite escalado com tint vermelho-escuro
+            let frames = GameScene.makeFrames(from: "sEnemy_strip7", frameCount: 7)
+            enemy.texture = frames[0]
+            enemy.size    = CGSize(width: 70, height: 70)
+            enemy.color      = SKColor(red: 0.85, green: 0.20, blue: 0.20, alpha: 1.0)
+            enemy.colorBlendFactor = 0.55
+            let anim = SKAction.animate(with: frames, timePerFrame: 0.18)
+            enemy.run(SKAction.repeatForever(anim), withKey: "walkAnim")
+            let hp = max(4, Int(pow(1.6, Double(difficultyTier))) * 4)
+            enemy.userData?["health"] = hp
+            enemy.userData?["isTank"] = true
+
+        case .ranged:
+            // Mantém distância e dispara projéteis lentos
+            let frames = GameScene.makeFrames(from: "sEnemy_strip7", frameCount: 7)
+            enemy.texture = frames[0]
+            enemy.size    = CGSize(width: 38, height: 38)
+            enemy.color      = SKColor(red: 0.30, green: 0.30, blue: 1.00, alpha: 1.0)
+            enemy.colorBlendFactor = 0.65
+            let anim = SKAction.animate(with: frames, timePerFrame: 0.12)
+            enemy.run(SKAction.repeatForever(anim), withKey: "walkAnim")
+            let hp = max(1, Int(pow(1.6, Double(difficultyTier))) * 2)
+            enemy.userData?["health"]   = hp
+            enemy.userData?["isRanged"] = true
+        }
 
         enemy.physicsBody = SKPhysicsBody(rectangleOf: enemy.size)
         enemy.physicsBody?.affectedByGravity  = false
@@ -390,15 +452,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         enemy.physicsBody?.collisionBitMask   = PhysicsCategory.none
         enemy.physicsBody?.contactTestBitMask = PhysicsCategory.player | PhysicsCategory.bullet
         enemy.physicsBody?.usesPreciseCollisionDetection = true
-        enemy.userData = NSMutableDictionary()
 
-        // Vida escala exponencialmente com o tier de dificuldade
-        let scaledHealth = max(1, Int(pow(1.6, Double(difficultyTier))))
-        enemy.userData?["health"] = scaledHealth
-
-        let walkAnim = SKAction.animate(with: enemyFrames, timePerFrame: 0.1)
-        enemy.run(SKAction.repeatForever(walkAnim), withKey: "walkAnim")
-
+        // Spawn fora do ecrã
         let margin: CGFloat = 80
         let camX = gameCamera.position.x
         let camY = gameCamera.position.y
@@ -736,12 +791,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func nearestEnemy() -> SKSpriteNode? {
         var nearest: SKSpriteNode?
         var shortest = CGFloat.greatestFiniteMagnitude
-        enumerateChildNodes(withName: "enemy") { node, _ in
-            guard let e = node as? SKSpriteNode else { return }
-            let dx = e.position.x - self.player.position.x
-            let dy = e.position.y - self.player.position.y
-            let d2 = dx * dx + dy * dy
-            if d2 < shortest { shortest = d2; nearest = e }
+        for typeName in [EnemyType.normal.rawValue, EnemyType.tank.rawValue, EnemyType.ranged.rawValue] {
+            enumerateChildNodes(withName: typeName) { node, _ in
+                guard let e = node as? SKSpriteNode else { return }
+                let dx = e.position.x - self.player.position.x
+                let dy = e.position.y - self.player.position.y
+                let d2 = dx * dx + dy * dy
+                if d2 < shortest { shortest = d2; nearest = e }
+            }
         }
         return nearest
     }
@@ -826,9 +883,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         player.position.x = max(-mapHalfWidth  + playerHalf, min(mapHalfWidth  - playerHalf, player.position.x))
         player.position.y = max(-mapHalfHeight + playerHalf, min(mapHalfHeight - playerHalf, player.position.y))
 
-        // Inimigos movem-se em direcao ao player
+        // Inimigos normais movem-se em direção ao player
         let eSpeed = currentEnemySpeed()
-        enumerateChildNodes(withName: "enemy") { node, _ in
+        enumerateChildNodes(withName: EnemyType.normal.rawValue) { node, _ in
             guard let e = node as? SKSpriteNode else { return }
             let dx = self.player.position.x - e.position.x
             let dy = self.player.position.y - e.position.y
@@ -836,6 +893,48 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             e.position.x += cos(angle) * eSpeed
             e.position.y += sin(angle) * eSpeed
             if dx > 0 { e.xScale = 1 } else if dx < 0 { e.xScale = -1 }
+        }
+
+        // Tank: lento, move-se sempre em direção ao player
+        let tankSpeed = max(0.8, eSpeed * 0.45)
+        enumerateChildNodes(withName: EnemyType.tank.rawValue) { node, _ in
+            guard let e = node as? SKSpriteNode else { return }
+            let dx = self.player.position.x - e.position.x
+            let dy = self.player.position.y - e.position.y
+            let angle = atan2(dy, dx)
+            e.position.x += cos(angle) * tankSpeed
+            e.position.y += sin(angle) * tankSpeed
+            if dx > 0 { e.xScale = 1 } else if dx < 0 { e.xScale = -1 }
+        }
+
+        // Ranged: mantém distância ideal, dispara projéteis
+        let rangedSpeed = max(1.2, eSpeed * 0.65)
+        enumerateChildNodes(withName: EnemyType.ranged.rawValue) { node, _ in
+            guard let e = node as? SKSpriteNode else { return }
+            let dx   = self.player.position.x - e.position.x
+            let dy   = self.player.position.y - e.position.y
+            let dist = sqrt(dx * dx + dy * dy)
+            let angle = atan2(dy, dx)
+
+            if dist > self.rangedStopDistance + 20 {
+                // Aproxima até à distância ideal
+                e.position.x += cos(angle) * rangedSpeed
+                e.position.y += sin(angle) * rangedSpeed
+            } else if dist < self.rangedStopDistance - 20 {
+                // Recua se o player se aproximar demasiado
+                e.position.x -= cos(angle) * rangedSpeed
+                e.position.y -= sin(angle) * rangedSpeed
+            }
+            if dx > 0 { e.xScale = 1 } else if dx < 0 { e.xScale = -1 }
+
+            // Disparo com intervalo
+            let id = ObjectIdentifier(e)
+            let lastFire = self.lastRangedFireTime[id] ?? -99
+            if currentTime - lastFire >= self.rangedFireInterval && dist <= self.rangedFireRange {
+                self.lastRangedFireTime[id] = currentTime
+                let dir = CGVector(dx: dx / dist, dy: dy / dist)
+                self.spawnEnemyBullet(from: e.position, direction: dir)
+            }
         }
 
         // Ima: atrai data bits dentro do raio
@@ -864,6 +963,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             let now = CACurrentMediaTime()
             guard now - lastDamageTime >= damageCooldown else { return }
             lastDamageTime = now
+            // Tank faz mais dano
+            let enemyNode = maskA == PhysicsCategory.enemy ? contact.bodyA.node : contact.bodyB.node
+            let dmg = (enemyNode?.userData?["isTank"] as? Bool == true) ? damagePerHit * 2 : damagePerHit
+            takeDamage(dmg)
+            return
+        }
+
+        // Projétil inimigo atinge player
+        if mask == (PhysicsCategory.player | PhysicsCategory.enemyBullet) {
+            let bulletNode = maskA == PhysicsCategory.enemyBullet ? contact.bodyA.node : contact.bodyB.node
+            bulletNode?.removeFromParent()
+            let now = CACurrentMediaTime()
+            guard now - lastDamageTime >= 0.3 else { return }
+            lastDamageTime = now
             takeDamage(damagePerHit)
             return
         }
@@ -879,12 +992,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             let remaining = max(0, hp - bulletDamage)
             if remaining > 0 {
                 enemyNode?.userData?["health"] = remaining
+                // Flash de dano no tank
+                if enemyNode?.userData?["isTank"] as? Bool == true {
+                    enemyNode?.run(SKAction.sequence([
+                        SKAction.colorize(with: .white, colorBlendFactor: 0.9, duration: 0.05),
+                        SKAction.colorize(with: SKColor(red: 0.85, green: 0.20, blue: 0.20, alpha: 1.0), colorBlendFactor: 0.55, duration: 0.15)
+                    ]))
+                }
             } else {
                 if let pos = enemyPos {
-                    showEnemyDeath(at: pos)
+                    let isTank = enemyNode?.userData?["isTank"] as? Bool == true
+                    showEnemyDeath(at: pos, big: isTank)
                     SoundManager.shared.playEffect(named: "aDeath.wav", on: self)
                     spawnDataBit(at: pos)
+                    if isTank { spawnDataBit(at: CGPoint(x: pos.x + 10, y: pos.y + 10)) }
                     tryDropScrapBit(at: pos)
+                    if isTank { tryDropScrapBit(at: pos) }
+                    // Limpar timer do ranged se necessário
+                    if let node = enemyNode { lastRangedFireTime.removeValue(forKey: ObjectIdentifier(node)) }
                 }
                 enemyNode?.removeFromParent()
             }
@@ -927,14 +1052,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if playerCurrentHealth <= 0 { triggerGameOver() }
     }
 
-    func showEnemyDeath(at position: CGPoint) {
+    func showEnemyDeath(at position: CGPoint, big: Bool = false) {
         let dead = SKSpriteNode(imageNamed: "sEnemyDead")
         dead.texture?.filteringMode = .nearest
-        dead.size     = CGSize(width: 40, height: 40)
+        dead.size     = big ? CGSize(width: 70, height: 70) : CGSize(width: 40, height: 40)
         dead.position = position
         dead.zPosition = 11
+        if big { dead.color = SKColor(red: 0.85, green: 0.20, blue: 0.20, alpha: 1.0); dead.colorBlendFactor = 0.55 }
         addChild(dead)
-        dead.run(SKAction.sequence([SKAction.fadeOut(withDuration: 0.4), .removeFromParent()]))
+        dead.run(SKAction.sequence([SKAction.fadeOut(withDuration: big ? 0.6 : 0.4), .removeFromParent()]))
     }
 
     // MARK: - Game Over
@@ -945,10 +1071,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         removeAction(forKey: "enemySpawner")
         removeAction(forKey: autoFireActionKey)
         joystick.removeFromParent()
-        enumerateChildNodes(withName: "enemy") { node, _ in
-            node.removeAllActions()
-            node.physicsBody?.velocity = .zero
+        for typeName in [EnemyType.normal.rawValue, EnemyType.tank.rawValue, EnemyType.ranged.rawValue] {
+            enumerateChildNodes(withName: typeName) { node, _ in
+                node.removeAllActions()
+                node.physicsBody?.velocity = .zero
+            }
         }
+        enumerateChildNodes(withName: "enemyBulletNode") { node, _ in node.removeFromParent() }
         showGameOverOverlay()
     }
 
@@ -1550,6 +1679,45 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Apply
         if id == "musicSlider"   { SoundManager.shared.musicVolume   = Float(t) }
         if id == "effectsSlider" { SoundManager.shared.effectsVolume = Float(t) }
+    }
+
+
+
+    // MARK: - Enemy Ranged Bullet
+    private func spawnEnemyBullet(from position: CGPoint, direction: CGVector) {
+        let bulletSpeed:  CGFloat      = 160
+        let bulletRange:  CGFloat      = 520
+        let bulletRadius: CGFloat      = 8
+
+        let bullet = SKShapeNode(circleOfRadius: bulletRadius)
+        bullet.name        = "enemyBulletNode"
+        bullet.fillColor   = SKColor(red: 0.95, green: 0.45, blue: 0.10, alpha: 1.0)
+        bullet.strokeColor = SKColor(red: 1.00, green: 0.70, blue: 0.20, alpha: 1.0)
+        bullet.lineWidth   = 2
+        bullet.position    = position
+        bullet.zPosition   = 48
+
+        // Glow interno
+        let glow = SKShapeNode(circleOfRadius: bulletRadius * 0.55)
+        glow.fillColor   = SKColor(white: 1.0, alpha: 0.85)
+        glow.strokeColor = .clear
+        bullet.addChild(glow)
+
+        bullet.physicsBody = SKPhysicsBody(circleOfRadius: bulletRadius)
+        bullet.physicsBody?.affectedByGravity  = false
+        bullet.physicsBody?.allowsRotation     = false
+        bullet.physicsBody?.isDynamic          = true
+        bullet.physicsBody?.categoryBitMask    = PhysicsCategory.enemyBullet
+        bullet.physicsBody?.collisionBitMask   = PhysicsCategory.none
+        bullet.physicsBody?.contactTestBitMask = PhysicsCategory.player
+        bullet.physicsBody?.usesPreciseCollisionDetection = true
+        addChild(bullet)
+
+        let move = SKAction.move(
+            by: CGVector(dx: direction.dx * bulletRange, dy: direction.dy * bulletRange),
+            duration: TimeInterval(bulletRange / bulletSpeed)
+        )
+        bullet.run(SKAction.sequence([move, .removeFromParent()]))
     }
 
 
