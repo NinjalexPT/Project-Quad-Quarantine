@@ -1309,6 +1309,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     hideSoundMenu(reopenPause: true)
                 } else if name == "soundMenuMute" {
                     SoundManager.shared.isMuted.toggle()
+                    if !SoundManager.shared.isMuted {
+                        SoundManager.shared.playMusic(named: "BONUS - Experiment (Looped version).wav")
+                    } else {
+                        SoundManager.shared.stopMusic()
+                    }
                     hideSoundMenu(reopenPause: false)
                     showSoundMenu()
                 }
@@ -1556,7 +1561,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         title.text      = "🔊  Sound"
         title.fontSize  = 22
         title.fontColor = .white
-        title.position  = CGPoint(x: 0, y: 156)
+        title.position  = CGPoint(x: 0, y: 135)
         panel.addChild(title)
 
         // Linha separadora

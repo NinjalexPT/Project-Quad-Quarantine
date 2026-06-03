@@ -457,6 +457,11 @@ class MainMenuScene: SKScene {
                 hideSoundMenu()
             } else if name == "soundMenuMute" {
                 SoundManager.shared.isMuted.toggle()
+                if !SoundManager.shared.isMuted {
+                    SoundManager.shared.playMusic(named: "BONUS - Experiment (Looped version).wav")
+                } else {
+                    SoundManager.shared.stopMusic()
+                }
                 hideSoundMenu()
                 showSoundMenu()
             }
@@ -567,7 +572,7 @@ class MainMenuScene: SKScene {
         title.text      = "🔊  Sound"
         title.fontSize  = 22
         title.fontColor = .white
-        title.position  = CGPoint(x: 0, y: 132)
+        title.position  = CGPoint(x: 0, y: 135)
         panel.addChild(title)
 
         let sep = SKShapeNode(rectOf: CGSize(width: panelW - 40, height: 1))
